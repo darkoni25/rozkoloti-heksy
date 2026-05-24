@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://combat_scene_001"]
+
+[ext_resource type="Script" path="res://scenes/combat/CombatScene.gd" id="1_cs001"]
+
+[node name="CombatScene" type="Node2D"]
+script = ExtResource("1_cs001")

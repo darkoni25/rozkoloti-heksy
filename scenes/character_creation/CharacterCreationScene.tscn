@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://char_creation_001"]
+
+[ext_resource type="Script" path="res://scenes/character_creation/CharacterCreationScene.gd" id="1_cc001"]
+
+[node name="CharacterCreationScene" type="Node2D"]
+script = ExtResource("1_cc001")
