@@ -24,6 +24,10 @@ var _message:   String         = ""
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color(0.04, 0.04, 0.06))
 	_update_reachable()
+	# Якщо завантажились під час бою — відразу повертаємось у бій
+	if GameState.regional_combat_pending:
+		get_tree().change_scene_to_file("res://scenes/combat/CombatScene.tscn")
+		return
 
 func _update_reachable() -> void:
 	_reachable = []
@@ -83,6 +87,7 @@ func _enter_node(nid: int) -> void:
 	var t: int        = n["type"]
 
 	if t == GameState.NodeType.COMBAT:
+		GameState.regional_combat_pending = true
 		get_tree().change_scene_to_file("res://scenes/combat/CombatScene.tscn")
 
 	elif t == GameState.NodeType.LOOT:
@@ -100,11 +105,13 @@ func _enter_node(nid: int) -> void:
 		if GameState.current_direction != -1 and \
 				not GameState.explored_directions.has(GameState.current_direction):
 			GameState.explored_directions.append(GameState.current_direction)
+		# end_regional_map() ПЕРЕД save_game() — щоб in_regional_map = false
+		# записався в файл (інакше при завантаженні гра знову відкриє карту)
+		GameState.end_regional_map()
 		GameState.save_game()
 		_message = "Вилазка завершена! Повертаємось на базу."
 		queue_redraw()
 		await get_tree().create_timer(2.0).timeout
-		GameState.end_regional_map()
 		get_tree().change_scene_to_file("res://scenes/base/BaseScene.tscn")
 
 # ── Рендер ───────────────────────────────────────────────────────────────

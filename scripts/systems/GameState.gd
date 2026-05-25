@@ -1,5 +1,7 @@
 extends Node
 
+var current_slot: int = 0   # активний слот збереження (0-2)
+
 var resources:  Dictionary[String, int] = {}
 var base_slots: Array[int]             = []
 
@@ -135,8 +137,9 @@ var companion_progress:   Dictionary = {}
 var regional_nodes:   Array = []
 var regional_edges:   Array = []
 var regional_current: int   = 0
-var regional_visited: Array[int] = []
-var in_regional_map:  bool  = false
+var regional_visited:      Array[int] = []
+var in_regional_map:       bool       = false
+var regional_combat_pending: bool     = false   # true = бій розпочато але не завершено
 
 enum NodeType { START, COMBAT, LOOT, END }
 
@@ -146,7 +149,7 @@ func _ready() -> void:
 
 func _init_state() -> void:
 	resources  = {"wood": 0, "stone": 0, "metal": 0, "food": 0}
-	base_slots = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+	base_slots = [-1, -1, -1, -1, -1, -1, -1, -1]
 	hero                 = {}
 	hero_created         = false
 	hero_recovery_raids  = 0
@@ -207,7 +210,8 @@ func start_regional_map() -> void:
 	in_regional_map  = true
 
 func end_regional_map() -> void:
-	in_regional_map = false
+	in_regional_map          = false
+	regional_combat_pending  = false
 	process_cycle()
 
 # Викликається кожного разу при поверненні на базу після вилазки
@@ -218,8 +222,11 @@ func process_cycle() -> void:
 
 	# 2. Робітники виробляють ресурси
 	for key in WORKER_PRODUCTIVITY:
-		var w: int = workers.get(key, 0)
-		resources[key] += w * int(WORKER_PRODUCTIVITY[key])
+		var w:    int = workers.get(key, 0)
+		var prod: int = int(WORKER_PRODUCTIVITY[key])
+		if key == "food" and has_building(4):   # Мисливська хижа: +1 їжа/робітник
+			prod += 1
+		resources[key] += w * prod
 
 	# 3. Їжа споживається (1 їжа = 2 людини за цикл)
 	var consumed: int = ceili(population / 2.0)
@@ -246,8 +253,58 @@ func _clamp_workers() -> void:
 		workers[key]    = int(workers.get(key, 0)) - remove
 		total          -= remove
 
+# ── Хелпери будівель ──────────────────────────────────────────────────────
+func get_built_buildings() -> Array[int]:
+	var result: Array[int] = []
+	for bid in base_slots:
+		if bid != -1 and not result.has(bid):
+			result.append(bid)
+	return result
+
+func has_building(bid: int) -> bool:
+	return base_slots.has(bid)
+
 # ── Збереження ────────────────────────────────────────────────────────────
+func slot_path(slot: int) -> String:
+	return "user://save_%d.json" % slot
+
+func has_save(slot: int = -1) -> bool:
+	var s := current_slot if slot < 0 else slot
+	return FileAccess.file_exists(slot_path(s))
+
+func any_save_exists() -> bool:
+	for i in 3:
+		if has_save(i):
+			return true
+	return false
+
+func get_slot_info(slot: int) -> Dictionary:
+	if not has_save(slot):
+		return {}
+	var file := FileAccess.open(slot_path(slot), FileAccess.READ)
+	if file == null:
+		return {}
+	var parsed = JSON.parse_string(file.get_as_text())
+	if not parsed is Dictionary:
+		return {}
+	var data  := parsed as Dictionary
+	var h     = data.get("hero", {})
+	if not h is Dictionary:
+		return {}
+	var hd := h as Dictionary
+	var loc: String = "Вилазка" if bool(data.get("in_regional_map", false)) else "База"
+	return {
+		"name":     str(hd.get("name",     "???")),
+		"class":    str(hd.get("spec_name", "")),
+		"location": loc,
+		"date":     str(data.get("save_date", "")),
+		"level":    int(hd.get("level", 1)),
+	}
+
 func save_game() -> void:
+	var dt   := Time.get_datetime_dict_from_system()
+	var date := "%02d.%02d  %02d:%02d" % [
+		int(dt["day"]), int(dt["month"]), int(dt["hour"]), int(dt["minute"])]
 	var data: Dictionary = {
 		"resources":           resources,
 		"base_slots":          Array(base_slots),
@@ -265,15 +322,26 @@ func save_game() -> void:
 		"equipped":            equipped,
 		"smithy_items_given":  smithy_items_given,
 		"companion_progress":  companion_progress,
+		# ── Стан вилазки ─────────────────────────────────────────────────
+		"in_regional_map":          in_regional_map,
+		"current_direction":        current_direction,
+		"regional_nodes":           regional_nodes,
+		"regional_edges":           regional_edges,
+		"regional_current":         regional_current,
+		"regional_visited":         Array(regional_visited),
+		"regional_combat_pending":  regional_combat_pending,
+		"save_date":               date,
 	}
-	var file := FileAccess.open("user://save.json", FileAccess.WRITE)
+	var file := FileAccess.open(slot_path(current_slot), FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify(data))
 
-func load_game() -> void:
-	if not FileAccess.file_exists("user://save.json"):
+func load_game(slot: int = -1) -> void:
+	if slot >= 0:
+		current_slot = slot
+	if not FileAccess.file_exists(slot_path(current_slot)):
 		return
-	var file := FileAccess.open("user://save.json", FileAccess.READ)
+	var file := FileAccess.open(slot_path(current_slot), FileAccess.READ)
 	if not file:
 		return
 	var parsed = JSON.parse_string(file.get_as_text())
@@ -316,10 +384,29 @@ func load_game() -> void:
 		smithy_items_given = bool(data["smithy_items_given"])
 	if data.has("companion_progress") and data["companion_progress"] is Dictionary:
 		companion_progress = data["companion_progress"] as Dictionary
+	# ── Стан вилазки ─────────────────────────────────────────────────────
+	if data.has("in_regional_map"):
+		in_regional_map = bool(data["in_regional_map"])
+	if data.has("current_direction"):
+		current_direction = int(data["current_direction"])
+	if data.has("regional_nodes") and data["regional_nodes"] is Array:
+		regional_nodes = data["regional_nodes"] as Array
+	if data.has("regional_edges") and data["regional_edges"] is Array:
+		regional_edges = data["regional_edges"] as Array
+	if data.has("regional_current"):
+		regional_current = int(data["regional_current"])
+	if data.has("regional_visited") and data["regional_visited"] is Array:
+		regional_visited.clear()
+		for v in (data["regional_visited"] as Array):
+			regional_visited.append(int(v))
+	if data.has("regional_combat_pending"):
+		regional_combat_pending = bool(data["regional_combat_pending"])
 	if data.has("workers") and data["workers"] is Dictionary:
 		var w = data["workers"]
 		for key in ["wood", "stone", "metal", "food"]:
 			workers[key] = int(w.get(key, 0))
+	# Очищаємо equipped від невалідних індексів (може трапитись після пошкодження збереження)
+	_validate_equipped()
 	if data.has("hero") and data["hero"] is Dictionary:
 		var h = data["hero"]
 		hero["name"]       = str(h.get("name",       HERO_DEFAULT["name"]))
@@ -338,6 +425,26 @@ func load_game() -> void:
 			hero["color_b"] = float(h.get("color_b", 0.20))
 
 # ── Спорядження: хелпери ─────────────────────────────────────────────────
+
+# Видаляє з equipped всі записи що посилаються на невалідні або відсутні предмети
+func _validate_equipped() -> void:
+	var bad_chars: Array = []
+	for char_key in equipped:
+		var char_equip = equipped[char_key]
+		if not char_equip is Dictionary:
+			bad_chars.append(char_key); continue
+		var d := char_equip as Dictionary
+		var bad_slots: Array = []
+		for slot in d:
+			var idx := int(d[slot])
+			if idx < 0 or idx >= inventory.size() or not inventory[idx] is Dictionary:
+				bad_slots.append(slot)
+		for slot in bad_slots:
+			d.erase(slot)
+		if d.is_empty():
+			bad_chars.append(char_key)
+	for key in bad_chars:
+		equipped.erase(key)
 
 # Перевіряє чи предмет може бути надітий у даний слот (кільця взаємозамінні)
 func item_fits_slot(item: Dictionary, target_slot: String) -> bool:

@@ -19,6 +19,15 @@ config/main_scene="res://scenes/base/BaseScene.tscn"
 [autoload]
 
 GameState="*res://scripts/systems/GameState.gd"
+PauseMenu="*res://scripts/systems/PauseMenu.gd"
+SaveSlotMenu="*res://scripts/systems/SaveSlotMenu.gd"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/mode=2
+window/stretch/mode="canvas_items"
 
 [physics]
 

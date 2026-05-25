@@ -2,25 +2,54 @@ extends Node2D
 
 # ── Дані споруд ───────────────────────────────────────────────────────────
 const BUILDINGS = [
-	{"name": "Каплиця",         "companion": "Клірик",      "wood": 20, "stone": 10, "metal": 0 },
-	{"name": "Казарма",          "companion": "Воїн",        "wood": 30, "stone": 20, "metal": 10},
-	{"name": "Гільдія злодіїв",  "companion": "Злодій",      "wood": 25, "stone": 10, "metal": 15},
-	{"name": "Башта мага",       "companion": "Маг",         "wood": 20, "stone": 30, "metal": 10},
-	{"name": "Мисливська хижа",  "companion": "Мисл.",       "wood": 35, "stone": 10, "metal": 5 },
-	{"name": "Святилище тіней",  "companion": "Оккуль.",     "wood": 25, "stone": 15, "metal": 20},
-	{"name": "Таверна",          "companion": "Бард",        "wood": 30, "stone": 15, "metal": 5 },
-	{"name": "Кузня",            "companion": "",            "wood": 25, "stone": 30, "metal": 25},
+	{"name": "Каплиця",         "companion": "Клірик",  "wood": 20, "stone": 10, "metal": 0,  "effect": "+15% HP загону"},
+	{"name": "Казарма",          "companion": "Воїн",    "wood": 30, "stone": 20, "metal": 10, "effect": "+10 HP загону"},
+	{"name": "Гільдія злодіїв",  "companion": "Злодій",  "wood": 25, "stone": 10, "metal": 15, "effect": "лут ×1.5"},
+	{"name": "Башта мага",       "companion": "Маг",     "wood": 20, "stone": 30, "metal": 10, "effect": "+10 маг.бар."},
+	{"name": "Мисливська хижа",  "companion": "Мисл.",   "wood": 35, "stone": 10, "metal": 5,  "effect": "+1 їжа/роб."},
+	{"name": "Святилище тіней",  "companion": "Оккуль.", "wood": 25, "stone": 15, "metal": 20, "effect": "крит ×1.5"},
+	{"name": "Таверна",          "companion": "Бард",    "wood": 30, "stone": 15, "metal": 5,  "effect": "XP ×1.25"},
+	{"name": "Кузня",            "companion": "",        "wood": 25, "stone": 30, "metal": 25, "effect": "дає спорядження"},
 ]
 
 # ── Layout ────────────────────────────────────────────────────────────────
-const SLOT_COLS := 3
-const SLOT_ROWS := 3
-const SLOT_W    := 175.0
-const SLOT_H    := 108.0
-const SLOT_GAP  := 10.0
-const TOP_H     := 56.0
-const BOT_H     := 44.0
-const RIGHT_W   := 220.0
+const TOP_H   := 56.0
+const BOT_H   := 44.0
+const RIGHT_W := 220.0
+
+# Фонове зображення (1672×941 ≈ 16:9)
+const BG_W := 1672.0
+const BG_H := 941.0
+
+# UV-позиції 8 платформ (частка від BG_W/BG_H, anchor = низ-центр платформи)
+# Порядок відповідає slot index 0-7; налаштуй якщо треба зміщення
+const SLOT_UV: Array[Vector2] = [
+	Vector2(0.227, 0.298),  # 0 — ліво-верх   (Каплиця за замовч.)
+	Vector2(0.634, 0.285),  # 1 — право-верх  (Казарма)
+	Vector2(0.093, 0.521),  # 2 — далеко-ліво (Мисл. хижа)
+	Vector2(0.897, 0.508),  # 3 — далеко-право(Таверна)
+	Vector2(0.167, 0.689),  # 4 — низ-ліво    (Гільдія злодіїв)
+	Vector2(0.831, 0.674),  # 5 — низ-право   (Кузня)
+	Vector2(0.322, 0.833),  # 6 — дно-ліво    (Святилище)
+	Vector2(0.512, 0.887),  # 7 — дно-центр   (Башта мага ★)
+]
+
+# Яка «руїна» показується у порожньому слоті (building id за замовч.)
+# Відповідає логіці розташування вище
+const SLOT_DEFAULT_BID: Array[int] = [0, 1, 4, 6, 2, 7, 5, 3]
+
+# Ширина спрайту будівлі як частка від vp.x (підбери під розмір платформ)
+const SPRITE_W_FRAC := 0.155
+
+# Половина розміру клікабельної зони слота (у частках vp)
+const SLOT_HIT_HW := 0.090   # half-width
+const SLOT_HIT_HH := 0.085   # half-height
+
+# Назви файлів спрайтів (індекс = building id, як у BUILDINGS)
+const TEX_NAMES: Array[String] = [
+	"chapel", "barracks", "thieves_guild", "mage_tower",
+	"hunter_lodge", "shadow_sanctuary", "tavern", "forge",
+]
 
 # ── Кольори ───────────────────────────────────────────────────────────────
 const C_EMPTY    := Color(0.14, 0.11, 0.08, 1.0)
@@ -55,24 +84,36 @@ var _equip_hov_slot: int  = -1
 var _equip_sel_slot: int  = -1   # обраний слот (для показу відповідних предметів)
 var _equip_inv_off:  int  = 0    # зсув прокрутки інвентаря
 
+# ── Текстури ──────────────────────────────────────────────────────────────
+var _tex_bg:       Texture2D           = null
+var _tex_restored: Array[Texture2D]   = []
+var _tex_ruined:   Array[Texture2D]   = []
+
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color(0.06, 0.05, 0.04))
+	_load_textures()
 	if not GameState.hero_created:
 		get_tree().change_scene_to_file(
 			"res://scenes/character_creation/CharacterCreationScene.tscn")
 
+func _load_textures() -> void:
+	_tex_bg = load("res://assets/textures/Base/Back_ground.png") as Texture2D
+	_tex_restored.resize(TEX_NAMES.size())
+	_tex_ruined.resize(TEX_NAMES.size())
+	for i in TEX_NAMES.size():
+		var n := TEX_NAMES[i]
+		_tex_restored[i] = load("res://assets/textures/Base/%s_restored.png" % n) as Texture2D
+		_tex_ruined[i]   = load("res://assets/textures/Base/%s_ruined.png"   % n) as Texture2D
+
 # ── Допоміжні ────────────────────────────────────────────────────────────
 func _slot_rect(i: int) -> Rect2:
-	var vp    := get_viewport_rect().size
-	var gw    := SLOT_COLS * SLOT_W + (SLOT_COLS - 1) * SLOT_GAP
-	var gh    := SLOT_ROWS * SLOT_H + (SLOT_ROWS - 1) * SLOT_GAP
-	var sx    := ((vp.x - RIGHT_W) - gw) * 0.5
-	var sy    := TOP_H + (vp.y - TOP_H - BOT_H - gh) * 0.5
-	return Rect2(
-		sx + (i % SLOT_COLS) * (SLOT_W + SLOT_GAP),
-		sy + (i / SLOT_COLS as int) * (SLOT_H + SLOT_GAP),
-		SLOT_W, SLOT_H
-	)
+	var vp := get_viewport_rect().size
+	var uv := SLOT_UV[i]
+	var cx := uv.x * vp.x
+	var cy := uv.y * vp.y
+	var hw := SLOT_HIT_HW * vp.x
+	var hh := SLOT_HIT_HH * vp.y
+	return Rect2(cx - hw, cy - hh, hw * 2.0, hh * 2.0)
 
 func _menu_rect(menu_i: int) -> Rect2:
 	var vp := get_viewport_rect().size
@@ -113,7 +154,7 @@ func _equip_slot_rect(slot_i: int) -> Rect2:
 		10: col = 1; row = 5   # off_hand
 		_:
 			col = slot_i % 2
-			row = slot_i / 2
+			row = slot_i >> 1
 	return Rect2(pr.position.x + 8 + col * 278.0, pr.position.y + 76 + row * 56.0, 268, 50)
 
 # Rect для кнопок прокрутки і рядків інвентаря (нижня частина попапу)
@@ -230,7 +271,7 @@ func _input(event: InputEvent) -> void:
 			if _hov_wbtn != prev: queue_redraw()
 			return
 		_hov_slot = -1; _hov_menu = -1; _hov_companion = -1
-		for i in 9:
+		for i in 8:
 			if _slot_rect(i).has_point(pos):
 				_hov_slot = i; break
 		if _sel_slot != -1:
@@ -324,7 +365,7 @@ func _input(event: InputEvent) -> void:
 			_equip_char_idx = 0; queue_redraw(); return
 		if _workers_btn_rect().has_point(pos):
 			_show_workers = true; _show_equip = false; _sel_slot = -1; queue_redraw(); return
-		for i in 9:
+		for i in 8:
 			if _slot_rect(i).has_point(pos):
 				_sel_slot = i if (_slots[i] == -1 and _sel_slot != i) else -1
 				_hov_menu = -1; queue_redraw(); return
@@ -355,11 +396,47 @@ func _input(event: InputEvent) -> void:
 
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_ESCAPE:
-			_sel_slot = -1; queue_redraw()
+			if _show_equip:
+				_show_equip = false; _equip_sel_slot = -1; queue_redraw()
+				get_viewport().set_input_as_handled()
+			elif _show_workers:
+				_show_workers = false; queue_redraw()
+				get_viewport().set_input_as_handled()
+			elif _sel_slot != -1:
+				_sel_slot = -1; queue_redraw()
+				get_viewport().set_input_as_handled()
+			# else — подія іде до PauseMenu._unhandled_input
 
 # ── Рендер ───────────────────────────────────────────────────────────────
+func _draw_bg_and_buildings() -> void:
+	var vp := get_viewport_rect().size
+	# Фон — розтягнутий на весь вьюпорт (fill)
+	if _tex_bg != null:
+		draw_texture_rect(_tex_bg, Rect2(Vector2.ZERO, vp), false)
+	else:
+		draw_rect(Rect2(Vector2.ZERO, vp), Color(0.06, 0.05, 0.04))
+	# Спрайти будівель — bottom-center прив'язаний до UV-позиції платформи
+	var sw := SPRITE_W_FRAC * vp.x
+	for i in 8:
+		var bid     : int = _slots[i]
+		var def_bid : int = SLOT_DEFAULT_BID[i]
+		var tex: Texture2D
+		if bid != -1:
+			tex = _tex_restored[bid]
+		else:
+			tex = _tex_ruined[def_bid]
+		if tex == null:
+			continue
+		var uv := SLOT_UV[i]
+		var cx := uv.x * vp.x
+		var cy := uv.y * vp.y
+		# Висота зберігає пропорції спрайту
+		var sh := sw * float(tex.get_height()) / float(tex.get_width())
+		# Якір — низ-центр платформи
+		draw_texture_rect(tex, Rect2(cx - sw * 0.5, cy - sh, sw, sh), false)
+
 # Повертає індекси предметів в inventory, що підходять до слоту і не надіті на персонажа
-func _matching_items(char_key: String, slot: String) -> Array[int]:
+func _matching_items(_char_key: String, slot: String) -> Array[int]:
 	# Збираємо всі індекси що вже надіті на БУДЬ-ЯКОГО персонажа
 	var in_use: Array[int] = []
 	for ckey in GameState.equipped:
@@ -394,6 +471,7 @@ func _equip_chars() -> Array[Dictionary]:
 func _draw() -> void:
 	var vp   := get_viewport_rect().size
 	var font := ThemeDB.fallback_font
+	_draw_bg_and_buildings()
 	_draw_resources(font, vp)
 	_draw_slots(font)
 	_draw_right_panel(font, vp)
@@ -418,35 +496,34 @@ func _draw_resources(font: Font, vp: Vector2) -> void:
 				HORIZONTAL_ALIGNMENT_CENTER, 76, 14, Color.WHITE)
 
 func _draw_slots(font: Font) -> void:
-	for i in 9:
+	for i in 8:
 		var r      := _slot_rect(i)
-		var bid    := _slots[i]
+		var bid    : int = _slots[i]
 		var is_sel := i == _sel_slot
-		var is_hov := i == _hov_slot and bid == -1
+		var is_hov := i == _hov_slot
 
-		draw_rect(r, C_BUILT if bid != -1 else (C_SEL if is_sel else (C_HOV if is_hov else C_EMPTY)))
-		draw_rect(r, C_BORDER_S if is_sel else C_BORDER, false, 1.5)
-
-		if bid != -1:
+		if is_sel:
+			# Золоте виділення + підказка
+			draw_rect(r, Color(0.85, 0.65, 0.15, 0.22))
+			draw_rect(r, C_BORDER_S, false, 2.0)
+			draw_string(font, r.position + Vector2(0.0, r.size.y - 10.0),
+					"Обери споруду", HORIZONTAL_ALIGNMENT_CENTER, int(r.size.x), 12,
+					Color(0.9, 0.8, 0.3))
+		elif is_hov and bid == -1:
+			# Підсвічування порожнього слота
+			draw_rect(r, Color(0.22, 0.18, 0.10, 0.30))
+			draw_rect(r, C_BORDER, false, 1.5)
+			draw_string(font, r.position + Vector2(0.0, r.size.y - 10.0),
+					"клік — будувати", HORIZONTAL_ALIGNMENT_CENTER, int(r.size.x), 11,
+					Color(0.85, 0.75, 0.40))
+		elif is_hov and bid != -1:
+			# Підсвічування побудованої будівлі
 			var b: Dictionary = BUILDINGS[bid]
-			draw_rect(Rect2(r.position, Vector2(r.size.x, 28)), C_HDR)
-			draw_string(font, r.position + Vector2(8, 20), b["name"] as String,
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
-			var companion: String = b["companion"]
-			if companion != "":
-				draw_string(font, r.position + Vector2(8, 50), companion,
-						HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.75, 0.88, 1.0))
-			draw_string(font, r.position + Vector2(8, 74), "Побудовано",
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.4, 0.8, 0.4))
-		elif is_sel:
-			draw_string(font, r.position + Vector2(8, 42), "Обери споруду ->",
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.9, 0.8, 0.3))
-		else:
-			draw_string(font, r.position + Vector2(8, 42), "[ порожньо ]",
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.38, 0.35, 0.30))
-			if is_hov:
-				draw_string(font, r.position + Vector2(8, 64), "клік — будувати",
-						HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.55, 0.55, 0.55))
+			draw_rect(r, Color(0.0, 0.0, 0.0, 0.28))
+			draw_rect(r, C_BORDER, false, 1.0)
+			draw_string(font, r.position + Vector2(0.0, r.size.y - 10.0),
+					b["name"] as String, HORIZONTAL_ALIGNMENT_CENTER, int(r.size.x), 12,
+					Color(0.95, 0.85, 0.50))
 
 func _draw_right_panel(font: Font, vp: Vector2) -> void:
 	var rx := vp.x - RIGHT_W
@@ -477,9 +554,17 @@ func _draw_right_panel(font: Font, vp: Vector2) -> void:
 			draw_string(font, mr.position + Vector2(7, 37), "Д:%d  К:%d  М:%d" % [w, s, m],
 					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, cost_col)
 
-			var companion: String = b["companion"]
-			if companion != "":
-				draw_string(font, mr.position + Vector2(7, 53), "-> " + companion,
+			var companion: String = b["companion"] as String
+			var effect:    String = b.get("effect", "") as String
+			var comp_eff: String
+			if companion != "" and effect != "":
+				comp_eff = "→ %s  ·  %s" % [companion, effect]
+			elif companion != "":
+				comp_eff = "→ " + companion
+			else:
+				comp_eff = "·  " + effect
+			if comp_eff != "":
+				draw_string(font, mr.position + Vector2(7, 53), comp_eff,
 						HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.6, 0.72, 0.9))
 	else:
 		# ── Картка героя ─────────────────────────────────────────────────
@@ -709,13 +794,13 @@ func _draw_equip_popup(font: Font) -> void:
 	# ── Вкладки персонажів ────────────────────────────────────────────────
 	_equip_char_idx = mini(_equip_char_idx, chars.size() - 1)
 	for i in chars.size():
-		var tr   := _equip_tab_rect(i)
-		var is_a := i == _equip_char_idx
-		var is_h := i == _equip_hov_tab and not is_a
-		draw_rect(tr, Color(0.32,0.22,0.40,0.95) if is_a else
+		var tab_r := _equip_tab_rect(i)
+		var is_a  := i == _equip_char_idx
+		var is_h  := i == _equip_hov_tab and not is_a
+		draw_rect(tab_r, Color(0.32,0.22,0.40,0.95) if is_a else
 				(Color(0.22,0.17,0.28,0.9) if is_h else Color(0.15,0.12,0.18,0.85)))
-		draw_rect(tr, C_BORDER_S if is_a else C_BORDER, false, 1.0)
-		draw_string(font, tr.position + Vector2(6, 18), chars[i]["name"] as String,
+		draw_rect(tab_r, C_BORDER_S if is_a else C_BORDER, false, 1.0)
+		draw_string(font, tab_r.position + Vector2(6, 18), chars[i]["name"] as String,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
 				Color.WHITE if is_a else Color(0.75, 0.75, 0.75))
 
@@ -781,7 +866,7 @@ func _draw_equip_popup(font: Font) -> void:
 				var idx: int = matching[_equip_inv_off + ri]
 				var it: Dictionary = GameState.inventory[idx] as Dictionary
 				var ir := _inv_item_rect(ri)
-				var ih := ri == _equip_hov_slot - 100  # hack: use separate hover? no
+				var _ih := ri == _equip_hov_slot - 100  # hack: use separate hover? no
 				draw_rect(ir, Color(0.18, 0.14, 0.24, 0.9))
 				draw_rect(ir, C_BORDER, false, 1.0)
 				draw_string(font, ir.position + Vector2(6, 20),
