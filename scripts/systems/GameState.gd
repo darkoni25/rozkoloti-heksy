@@ -106,15 +106,176 @@ const MAX_LEVEL: int = 10
 # Мінімальний накопичений XP для досягнення кожного рівня (index = level − 1)
 # Level 1 → 0 XP,  Level 2 → 150 XP,  Level 3 → 400 XP … Level 10 → 5000 XP
 const LEVEL_XP: Array[int] = [0, 150, 400, 750, 1200, 1750, 2400, 3150, 4000, 5000]
-const LEVEL_HP_BONUS:  int = 5   # +HP за кожен рівень
-const LEVEL_DMG_BONUS: int = 1   # +ATK за кожен рівень
+
+# ── Трофеї з вилазок ─────────────────────────────────────────────────────
+# rarity: 0=звичайні, 1=рідкісні, 2=дуже рідкісні
+const EXPEDITION_LOOT: Array[Dictionary] = [
+	{"id": 0, "name": "Гоблінське вухо",    "rarity": 0},
+	{"id": 1, "name": "Вовча шкіра",        "rarity": 0},
+	{"id": 2, "name": "Стародавня монета",  "rarity": 1},
+	{"id": 3, "name": "Магічний кристал",   "rarity": 1},
+	{"id": 4, "name": "Отруйне жало",       "rarity": 1},
+	{"id": 5, "name": "Зламаний артефакт",  "rarity": 2},
+	{"id": 6, "name": "Ельфійська реліквія","rarity": 2},
+	{"id": 7, "name": "Кістка велетня",     "rarity": 2},
+]
+
+const GOSSIP_TEXTS: Array[String] = [
+	"«Орки посилюють охорону на сході... будь обережний»",
+	"«У руїнах стара вежа — кажуть, там схований скарб»",
+	"«Гноми шукають союзників проти темної навали»",
+	"«Бачив незнайомця з картою підземних ходів»",
+	"«Ельфи закрили кордони. Але є таємний прохід крізь ліс»",
+	"«Цей ліс прокляте місце — вдвічі більше чудовиськ»",
+	"«Щось велике наближається з півночі...»",
+	"«Торговець прийшов у місто — він продає дивні речі»",
+]
+
+# Дії кожної будівлі. Структура рядка:
+#   label, desc — відображення
+#   cost: {ресурс: кількість}   loot_cost: {item_id: кількість}
+#   effect: ідентифікатор ефекту   effect_data: параметри
+const BUILDING_ACTIONS: Dictionary = {
+	0: [  # Каплиця
+		{"label": "Благословення загону",
+		 "desc": "+30 XP для всього загону",
+		 "cost": {"food": 8}, "loot_cost": {},
+		 "effect": "award_party_xp", "effect_data": {"xp": 30}},
+	],
+	1: [  # Казарма
+		{"label": "Бойові тренування",
+		 "desc": "+50 XP для всього загону",
+		 "cost": {"food": 10, "wood": 5}, "loot_cost": {},
+		 "effect": "award_party_xp", "effect_data": {"xp": 50}},
+	],
+	2: [  # Гільдія злодіїв
+		{"label": "Крадіжка запасів",
+		 "desc": "Здобути ресурси з міста",
+		 "cost": {"food": 5}, "loot_cost": {},
+		 "effect": "award_resources", "effect_data": {"wood": 8, "stone": 5, "metal": 3}},
+		{"label": "Вулична розвідка",
+		 "desc": "Знайти трофеї у місті",
+		 "cost": {"food": 8}, "loot_cost": {},
+		 "effect": "award_loot_random", "effect_data": {}},
+	],
+	3: [  # Башта мага
+		{"label": "Кільце воїна",
+		 "desc": "+12 HP, +2 Атк",
+		 "cost": {}, "loot_cost": {0: 2},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Кільце воїна", "slot": "ring", "hp_bonus": 12, "dmg_bonus": 2}},
+		{"label": "Кільце чаклуна",
+		 "desc": "+15 Маг",
+		 "cost": {}, "loot_cost": {3: 2},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Кільце чаклуна", "slot": "ring", "magic_bonus": 15}},
+		{"label": "Амулет захисту",
+		 "desc": "+5 Броня, +15 HP",
+		 "cost": {}, "loot_cost": {2: 2, 3: 1},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Амулет захисту", "slot": "neck", "armor": 5, "hp_bonus": 15}},
+		{"label": "Амулет спритності",
+		 "desc": "+4 Спр, +2 Ініц, +5% Крит",
+		 "cost": {}, "loot_cost": {4: 2, 2: 1},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Амулет спритності", "slot": "neck",
+		                 "agility_bonus": 4, "initiative_bonus": 2, "critical_bonus": 5}},
+		{"label": "Артефактне кільце",
+		 "desc": "+20 HP, +3 Атк, +10 Маг",
+		 "cost": {}, "loot_cost": {5: 1},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Артефактне кільце", "slot": "ring",
+		                 "hp_bonus": 20, "dmg_bonus": 3, "magic_bonus": 10}},
+	],
+	4: [  # Мисл.хижа
+		{"label": "Полювання",
+		 "desc": "+15 їжі, шанс знайти трофеї",
+		 "cost": {"food": 3}, "loot_cost": {},
+		 "effect": "award_hunt", "effect_data": {"food": 15}},
+	],
+	5: [  # Святилище тіней
+		{"label": "Темний ритуал",
+		 "desc": "+80 XP загону",
+		 "cost": {"food": 15}, "loot_cost": {5: 1},
+		 "effect": "award_party_xp", "effect_data": {"xp": 80}},
+		{"label": "Отруйний амулет",
+		 "desc": "+15% Крит, +4 Спр",
+		 "cost": {}, "loot_cost": {4: 3},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Амулет темряви", "slot": "neck",
+		                 "critical_bonus": 15, "agility_bonus": 4}},
+	],
+	6: [  # Таверна
+		{"label": "Почути чутки",
+		 "desc": "Дізнатись про наступну вилазку",
+		 "cost": {"food": 5}, "loot_cost": {},
+		 "effect": "gossip", "effect_data": {}},
+	],
+	7: [  # Кузня
+		{"label": "Кований меч",
+		 "desc": "+7 Атк",
+		 "cost": {"metal": 8, "wood": 3}, "loot_cost": {},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Кований меч", "slot": "main_hand", "dmg_bonus": 7}},
+		{"label": "Довгий меч",
+		 "desc": "+10 Атк",
+		 "cost": {"metal": 15, "wood": 5}, "loot_cost": {},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Довгий меч", "slot": "main_hand", "dmg_bonus": 10}},
+		{"label": "Бойова сокира",
+		 "desc": "+12 Атк, дворучна",
+		 "cost": {"metal": 18, "wood": 6}, "loot_cost": {},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Бойова сокира", "slot": "main_hand",
+		                 "dmg_bonus": 12, "two_handed": true}},
+		{"label": "Металевий щит",
+		 "desc": "+10 Броня, +18 Щит",
+		 "cost": {"metal": 12, "wood": 8}, "loot_cost": {},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Металевий щит", "slot": "off_hand",
+		                 "armor": 10, "simple_barrier": 18}},
+		{"label": "Кована кольчуга",
+		 "desc": "+18 Броня, +5 HP",
+		 "cost": {"metal": 20, "stone": 8}, "loot_cost": {},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Кована кольчуга", "slot": "chest",
+		                 "armor_type": 2, "armor": 18, "hp_bonus": 5}},
+		{"label": "Латний панцир",
+		 "desc": "+25 Броня, +20 HP",
+		 "cost": {"metal": 35, "stone": 12}, "loot_cost": {},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Латний панцир", "slot": "chest",
+		                 "armor_type": 3, "armor": 25, "hp_bonus": 20}},
+		{"label": "Кований шолом",
+		 "desc": "+8 Броня",
+		 "cost": {"metal": 10, "stone": 4}, "loot_cost": {},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Кований шолом", "slot": "helmet",
+		                 "armor_type": 2, "armor": 8}},
+		{"label": "Кольчужні поножі",
+		 "desc": "+12 Броня, +8 HP",
+		 "cost": {"metal": 14, "stone": 5}, "loot_cost": {},
+		 "effect": "craft_item",
+		 "effect_data": {"name": "Кольчужні поножі", "slot": "legs",
+		                 "armor_type": 2, "armor": 12, "hp_bonus": 8}},
+	],
+}
+
+# Варіанти вибору при левелапі (choice_id → дані)
+const LEVELUP_CHOICES: Array = [
+	{"id": 0, "label": "+12 HP  — Витривалість", "icon": "❤"},
+	{"id": 1, "label": "+2 Атк  — Сила",         "icon": "⚔"},
+	{"id": 2, "label": "+1 Очко навичок",         "icon": "✦"},
+]
 
 var hero_created:         bool        = false
 var hero_recovery_raids:  int         = 0   # >0 → герой пропускає рейд
 var tutorial_done:        bool        = false
 var raid_party:           Array[int]  = []
-var explored_directions:  Array[int]  = []
+var explored_directions:  Array[int]  = []   # legacy, не видаляємо
 var current_direction:    int         = -1
+var world_explored:       Array[int]  = []   # id вузлів карти світу що пройдені
+var current_world_node:   int         = -1   # вузол карти світу поточної вилазки
 
 # ── Населення та економіка ────────────────────────────────────────────────
 var population:            int                    = 0
@@ -129,9 +290,12 @@ var inventory: Array = []
 # equipped["hero"]["chest"] = inventory_index
 # equipped["c2"]["main_hand"] = inventory_index
 var equipped:             Dictionary = {}
-var smithy_items_given:   bool       = false   # Кузня вже наповнила інвентар
-# Прогрес компаньйонів: ключ = "c{uid}", значення = {level, xp, hp, dmg}
+var loot_bag:             Dictionary = {}   # str(item_id) → quantity
+# Прогрес компаньйонів: ключ = "c{uid}", значення = {level, xp, hp, dmg, skill_points}
 var companion_progress:   Dictionary = {}
+# Персонажі що підвищили рівень і чекають на вибір стату
+# ключ = char_key ("hero" / "c{uid}"), значення = {name, new_level}
+var pending_levelups:     Dictionary = {}
 
 # Регіональна карта
 var regional_nodes:   Array = []
@@ -157,14 +321,17 @@ func _init_state() -> void:
 	raid_party           = []
 	explored_directions  = []
 	current_direction    = -1
+	world_explored       = []
+	current_world_node   = -1
 	population           = 0
 	pending_population   = 0
 	workers              = {"wood": 0, "stone": 0, "metal": 0, "food": 0}
 	gold                 = 0
 	inventory            = []
 	equipped             = {}
-	smithy_items_given   = false
+	loot_bag             = {}
 	companion_progress   = {}
+	pending_levelups     = {}
 
 func start_new_game(hero_data: Dictionary) -> void:
 	_init_state()
@@ -212,6 +379,10 @@ func start_regional_map() -> void:
 func end_regional_map() -> void:
 	in_regional_map          = false
 	regional_combat_pending  = false
+	# Позначаємо вузол карти світу як пройдений
+	if current_world_node >= 0 and not world_explored.has(current_world_node):
+		world_explored.append(current_world_node)
+	current_world_node = -1
 	process_cycle()
 
 # Викликається кожного разу при поверненні на базу після вилазки
@@ -310,6 +481,7 @@ func save_game() -> void:
 		"base_slots":          Array(base_slots),
 		"raid_party":          Array(raid_party),
 		"explored_directions": Array(explored_directions),
+		"world_explored":      Array(world_explored),
 		"hero":                hero,
 		"hero_created":        hero_created,
 		"hero_recovery_raids": hero_recovery_raids,
@@ -320,11 +492,13 @@ func save_game() -> void:
 		"gold":                gold,
 		"inventory":           inventory,
 		"equipped":            equipped,
-		"smithy_items_given":  smithy_items_given,
+		"loot_bag":            loot_bag,
 		"companion_progress":  companion_progress,
+		"pending_levelups":    pending_levelups,
 		# ── Стан вилазки ─────────────────────────────────────────────────
 		"in_regional_map":          in_regional_map,
 		"current_direction":        current_direction,
+		"current_world_node":       current_world_node,
 		"regional_nodes":           regional_nodes,
 		"regional_edges":           regional_edges,
 		"regional_current":         regional_current,
@@ -364,6 +538,10 @@ func load_game(slot: int = -1) -> void:
 		explored_directions.clear()
 		for v in data["explored_directions"]:
 			explored_directions.append(int(v))
+	if data.has("world_explored") and data["world_explored"] is Array:
+		world_explored.clear()
+		for v in data["world_explored"]:
+			world_explored.append(int(v))
 	if data.has("hero_created"):
 		hero_created = bool(data["hero_created"])
 	if data.has("hero_recovery_raids"):
@@ -380,15 +558,19 @@ func load_game(slot: int = -1) -> void:
 		inventory = data["inventory"] as Array
 	if data.has("equipped") and data["equipped"] is Dictionary:
 		equipped = data["equipped"] as Dictionary
-	if data.has("smithy_items_given"):
-		smithy_items_given = bool(data["smithy_items_given"])
+	if data.has("loot_bag") and data["loot_bag"] is Dictionary:
+		loot_bag = data["loot_bag"] as Dictionary
 	if data.has("companion_progress") and data["companion_progress"] is Dictionary:
 		companion_progress = data["companion_progress"] as Dictionary
+	if data.has("pending_levelups") and data["pending_levelups"] is Dictionary:
+		pending_levelups = data["pending_levelups"] as Dictionary
 	# ── Стан вилазки ─────────────────────────────────────────────────────
 	if data.has("in_regional_map"):
 		in_regional_map = bool(data["in_regional_map"])
 	if data.has("current_direction"):
 		current_direction = int(data["current_direction"])
+	if data.has("current_world_node"):
+		current_world_node = int(data["current_world_node"])
 	if data.has("regional_nodes") and data["regional_nodes"] is Array:
 		regional_nodes = data["regional_nodes"] as Array
 	if data.has("regional_edges") and data["regional_edges"] is Array:
@@ -541,7 +723,7 @@ func _ensure_companion_progress(uid: int) -> void:
 		return
 	var c: Dictionary = COMPANIONS[uid]
 	companion_progress[ckey] = {
-		"level": 1, "xp": 0,
+		"level": 1, "xp": 0, "skill_points": 0,
 		"hp":    int(c["hp"]),
 		"dmg":   int(c["dmg"]),
 	}
@@ -586,9 +768,10 @@ func _check_levelup_hero() -> String:
 		if lvl >= MAX_LEVEL or int(hero.get("xp", 0)) < LEVEL_XP[lvl]:
 			break
 		hero["level"] = lvl + 1
-		hero["hp"]    = int(hero.get("hp",  50)) + LEVEL_HP_BONUS
-		hero["dmg"]   = int(hero.get("dmg", 12)) + LEVEL_DMG_BONUS
-		last_msg = "%s → Рівень %d!" % [str(hero.get("name", "Герой")), lvl + 1]
+		var new_lvl: int = lvl + 1
+		var hname: String = str(hero.get("name", "Герой"))
+		pending_levelups["hero"] = {"name": hname, "new_level": new_lvl}
+		last_msg = "★ %s → Рівень %d!" % [hname, new_lvl]
 	return last_msg
 
 func _check_levelup_companion(uid: int) -> String:
@@ -599,10 +782,46 @@ func _check_levelup_companion(uid: int) -> String:
 		if lvl >= MAX_LEVEL or int(cp.get("xp", 0)) < LEVEL_XP[lvl]:
 			break
 		cp["level"] = lvl + 1
-		cp["hp"]    = int(cp.get("hp",  30)) + LEVEL_HP_BONUS
-		cp["dmg"]   = int(cp.get("dmg",  8)) + LEVEL_DMG_BONUS
-		last_msg = "%s → Рівень %d!" % [COMPANIONS[uid]["name"] as String, lvl + 1]
+		var new_lvl: int = lvl + 1
+		var cname: String = COMPANIONS[uid]["name"] as String
+		pending_levelups["c%d" % uid] = {"name": cname, "new_level": new_lvl}
+		last_msg = "★ %s → Рівень %d!" % [cname, new_lvl]
 	return last_msg
+
+## Застосувати вибір гравця при левелапі.
+## choice_id: 0=+12HP  1=+2Атк  2=+1Очко навичок
+func apply_levelup_choice(char_key: String, choice_id: int) -> void:
+	match char_key:
+		"hero":
+			match choice_id:
+				0: hero["hp"]  = int(hero.get("hp",  50)) + 12
+				1: hero["dmg"] = int(hero.get("dmg", 12)) + 2
+				2: hero["skill_points"] = int(hero.get("skill_points", 0)) + 1
+		_:
+			var uid: int = int(char_key.substr(1))
+			_ensure_companion_progress(uid)
+			var cp: Dictionary = companion_progress[char_key] as Dictionary
+			match choice_id:
+				0: cp["hp"]  = int(cp.get("hp",  30)) + 12
+				1: cp["dmg"] = int(cp.get("dmg",  8)) + 2
+				2: cp["skill_points"] = int(cp.get("skill_points", 0)) + 1
+	pending_levelups.erase(char_key)
+	save_game()
+
+## Повертає список char_key що чекають на вибір левелапу.
+func get_pending_levelup_keys() -> Array[String]:
+	var result: Array[String] = []
+	for k in pending_levelups:
+		result.append(str(k))
+	return result
+
+## Повертає очки навичок персонажа.
+func get_skill_points(char_key: String) -> int:
+	if char_key == "hero":
+		return int(hero.get("skill_points", 0))
+	var uid: int = int(char_key.substr(1))
+	_ensure_companion_progress(uid)
+	return int((companion_progress[char_key] as Dictionary).get("skill_points", 0))
 
 # Надіти предмет (ind_idx — індекс в inventory)
 func equip_item(char_key: String, slot: String, inv_idx: int) -> void:
@@ -703,57 +922,93 @@ func give_starter_items(class_idx: int, char_key: String = "hero") -> void:
 #   atk_range(0=no override), initiative_bonus, hp_bonus, two_handed,
 #   simple_barrier(щит→фіз.бар.), magic_barrier, requires_quiver, is_quiver,
 #   critical_bonus, magic_bonus, agility_bonus
-func give_smithy_items() -> void:
-	if smithy_items_given:
-		return  # Вже видані
-	smithy_items_given = true
-	# ── Зброя (main_hand) ────────────────────────────────────────────────
-	inventory.append({"name": "Короткий меч",  "slot": "main_hand", "dmg_bonus": 5,  "atk_range": 1})
-	inventory.append({"name": "Кинджал",        "slot": "main_hand", "dmg_bonus": 3,  "atk_range": 1, "critical_bonus": 8})
-	inventory.append({"name": "Булава",          "slot": "main_hand", "dmg_bonus": 7,  "atk_range": 1})
-	inventory.append({"name": "Лук",             "slot": "main_hand", "dmg_bonus": 5,  "atk_range": 3, "requires_quiver": true})
-	inventory.append({"name": "Посох",           "slot": "main_hand", "dmg_bonus": 4,  "atk_range": 2, "two_handed": true, "magic_bonus": 15})
-	# ── Off hand ─────────────────────────────────────────────────────────
-	inventory.append({"name": "Дерев'яний щит", "slot": "off_hand",  "armor": 5,  "simple_barrier": 10})
-	inventory.append({"name": "Залізний щит",   "slot": "off_hand",  "armor": 8,  "simple_barrier": 16})
-	inventory.append({"name": "Колчан стріл",   "slot": "off_hand",  "is_quiver": true})
-	inventory.append({"name": "Магічна сфера",  "slot": "off_hand",  "magic_bonus": 12, "magic_barrier": 8})
-	inventory.append({"name": "Кинджал (доп.)", "slot": "off_hand",  "dmg_bonus": 3, "critical_bonus": 8})
-	# ── Шолом ────────────────────────────────────────────────────────────
-	inventory.append({"name": "Тканинний каптур",  "slot": "helmet", "armor_type": 0, "armor": 2,  "magic_bonus": 8})
-	inventory.append({"name": "Шкіряний шолом",    "slot": "helmet", "armor_type": 1, "armor": 6})
-	inventory.append({"name": "Кольчужний шолом",  "slot": "helmet", "armor_type": 2, "armor": 10, "hp_bonus": 5})
-	# ── Шия ──────────────────────────────────────────────────────────────
-	inventory.append({"name": "Амулет витривалості", "slot": "neck", "hp_bonus": 10})
-	inventory.append({"name": "Срібний медальйон",   "slot": "neck", "initiative_bonus": 2, "magic_bonus": 5})
-	# ── Тіло ─────────────────────────────────────────────────────────────
-	inventory.append({"name": "Тканинна мантія",  "slot": "chest", "armor_type": 0, "armor": 4,  "magic_bonus": 12})
-	inventory.append({"name": "Шкіряна броня",    "slot": "chest", "armor_type": 1, "armor": 10, "agility_bonus": 3})
-	inventory.append({"name": "Кольчуга",          "slot": "chest", "armor_type": 2, "armor": 16, "hp_bonus": 10})
-	inventory.append({"name": "Латний панцир",     "slot": "chest", "armor_type": 3, "armor": 22, "hp_bonus": 15})
-	# ── Наручі ───────────────────────────────────────────────────────────
-	inventory.append({"name": "Тканинні рукавиці", "slot": "gloves", "armor_type": 0, "armor": 2, "magic_bonus": 4})
-	inventory.append({"name": "Шкіряні наручі",    "slot": "gloves", "armor_type": 1, "armor": 4, "agility_bonus": 2})
-	inventory.append({"name": "Кольчужні рукавиці","slot": "gloves", "armor_type": 2, "armor": 7, "hp_bonus": 3})
-	# ── Пояс ─────────────────────────────────────────────────────────────
-	inventory.append({"name": "Шкіряний пояс",   "slot": "belt", "armor_type": 1, "armor": 3, "hp_bonus": 8})
-	inventory.append({"name": "Кольчужний пояс", "slot": "belt", "armor_type": 2, "armor": 5, "hp_bonus": 12})
-	# ── Поножі ───────────────────────────────────────────────────────────
-	inventory.append({"name": "Тканинні штани",   "slot": "legs", "armor_type": 0, "armor": 3,  "magic_bonus": 5})
-	inventory.append({"name": "Шкіряні поножі",   "slot": "legs", "armor_type": 1, "armor": 8,  "agility_bonus": 2})
-	inventory.append({"name": "Кольчужні поножі", "slot": "legs", "armor_type": 2, "armor": 12, "hp_bonus": 8})
-	# ── Чоботи ───────────────────────────────────────────────────────────
-	inventory.append({"name": "Тканинні сандалі", "slot": "boots", "armor_type": 0, "armor": 2, "initiative_bonus": 2})
-	inventory.append({"name": "Шкіряні чоботи",   "slot": "boots", "armor_type": 1, "armor": 5, "initiative_bonus": 3})
-	inventory.append({"name": "Кольчужні чоботи", "slot": "boots", "armor_type": 2, "armor": 9, "initiative_bonus": 1})
-	# ── Кільця (slot="ring" — підходить у ring1 і ring2) ─────────────────
-	inventory.append({"name": "Кільце сили",       "slot": "ring", "hp_bonus": 8})
-	inventory.append({"name": "Кільце сили",       "slot": "ring", "hp_bonus": 8})
-	inventory.append({"name": "Кільце спритності", "slot": "ring", "agility_bonus": 3, "initiative_bonus": 1})
-	inventory.append({"name": "Кільце спритності", "slot": "ring", "agility_bonus": 3, "initiative_bonus": 1})
-	inventory.append({"name": "Магічне кільце",    "slot": "ring", "magic_bonus": 10})
-	inventory.append({"name": "Магічне кільце",    "slot": "ring", "magic_bonus": 10})
+
+# ── Трофеї ────────────────────────────────────────────────────────────────
+func add_loot(item_id: int, qty: int = 1) -> void:
+	var key := str(item_id)
+	loot_bag[key] = int(loot_bag.get(key, 0)) + qty
+
+# Видає рандомні трофеї і повертає рядок-опис для логу.
+# is_combat=true → вищий шанс рідкостей
+func award_expedition_loot(is_combat: bool) -> String:
+	var parts: Array[String] = []
+	# Завжди 1-2 звичайні (id 0-1)
+	var c_id  := randi() % 2
+	var c_qty := 1 + randi() % 2
+	add_loot(c_id, c_qty)
+	var cname: String = EXPEDITION_LOOT[c_id]["name"] as String
+	parts.append(cname + ("×%d" % c_qty if c_qty > 1 else ""))
+	# 40% (бій: 55%) шанс рідкісного (id 2-4)
+	if randf() < (0.55 if is_combat else 0.40):
+		var r_id := 2 + randi() % 3
+		add_loot(r_id)
+		parts.append(EXPEDITION_LOOT[r_id]["name"] as String)
+	# 10% (бій: 15%) шанс дуже рідкісного (id 5-7)
+	if randf() < (0.15 if is_combat else 0.10):
+		var vr_id := 5 + randi() % 3
+		add_loot(vr_id)
+		parts.append("★ " + (EXPEDITION_LOOT[vr_id]["name"] as String))
 	save_game()
+	return "  ".join(parts)
+
+func can_afford_action(bid: int, action_idx: int) -> bool:
+	if not BUILDING_ACTIONS.has(bid): return false
+	var acts: Array = BUILDING_ACTIONS[bid] as Array
+	if action_idx >= acts.size(): return false
+	var act: Dictionary = acts[action_idx] as Dictionary
+	var cost: Dictionary = act.get("cost", {}) as Dictionary
+	for k in cost:
+		if int(resources.get(k, 0)) < int(cost[k]): return false
+	var lc: Dictionary = act.get("loot_cost", {}) as Dictionary
+	for id_key in lc:
+		if int(loot_bag.get(str(id_key), 0)) < int(lc[id_key]): return false
+	return true
+
+# Виконати дію будівлі. Повертає {"success": bool, "msg": String}
+func execute_building_action(bid: int, action_idx: int) -> Dictionary:
+	if not can_afford_action(bid, action_idx):
+		return {"success": false, "msg": "Не вистачає ресурсів або трофеїв"}
+	var acts: Array    = BUILDING_ACTIONS[bid] as Array
+	var act: Dictionary = acts[action_idx] as Dictionary
+	# Списуємо ресурси
+	var cost: Dictionary = act.get("cost", {}) as Dictionary
+	for k in cost: resources[k] = int(resources.get(k, 0)) - int(cost[k])
+	# Списуємо трофеї
+	var lc: Dictionary = act.get("loot_cost", {}) as Dictionary
+	for id_key in lc:
+		var sk := str(id_key)
+		loot_bag[sk] = int(loot_bag.get(sk, 0)) - int(lc[id_key])
+		if int(loot_bag[sk]) <= 0: loot_bag.erase(sk)
+	# Виконуємо ефект
+	var effect: String     = act.get("effect", "") as String
+	var edata: Dictionary  = act.get("effect_data", {}) as Dictionary
+	var msg: String        = act.get("label", "Виконано") as String
+	match effect:
+		"craft_item":
+			var item := edata.duplicate()
+			inventory.append(item)
+			msg = "Створено: " + (item.get("name", "?") as String)
+		"award_party_xp":
+			var xp: int  = int(edata.get("xp", 0))
+			var leveled  := award_xp(xp)
+			msg = "Загін отримав +%d XP" % xp
+			if not leveled.is_empty(): msg += "  ★  " + "  ★  ".join(leveled)
+		"award_resources":
+			for rk in edata: resources[rk] = int(resources.get(rk, 0)) + int(edata[rk])
+			msg = "Отримано ресурси"
+		"award_loot_random":
+			var ls := award_expedition_loot(false)
+			msg = "Знайдено: " + ls
+		"award_hunt":
+			var food_gain: int = int(edata.get("food", 15))
+			resources["food"] = int(resources.get("food", 0)) + food_gain
+			msg = "Полювання! Їжа+%d" % food_gain
+			if randf() < 0.6:
+				msg += "  " + award_expedition_loot(false)
+		"gossip":
+			msg = GOSSIP_TEXTS[randi() % GOSSIP_TEXTS.size()] as String
+	save_game()
+	return {"success": true, "msg": msg}
 
 # ── Генерація карти ───────────────────────────────────────────────────────
 func _generate_tutorial_map() -> void:
@@ -771,10 +1026,14 @@ func _generate_map() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 
-	var mid_layers := rng.randi_range(3, 4)
-	var layer_sizes: Array[int] = [1]
+	# Шар 0: START (1 вузол)
+	# Шар 1: ЗАВЖДИ 2 вузли — гарантований форк (ліва і права гілка)
+	# Шари 2..N-2: 1-2 вузли на кожній гілці
+	# Шар N-1: END (1 вузол)
+	var layer_sizes: Array[int] = [1, 2]
+	var mid_layers := rng.randi_range(1, 2)
 	for _i in mid_layers:
-		layer_sizes.append(rng.randi_range(1, 3))
+		layer_sizes.append(rng.randi_range(1, 2))
 	layer_sizes.append(1)
 	var total_layers := layer_sizes.size()
 
@@ -790,7 +1049,10 @@ func _generate_map() -> void:
 			elif layer == total_layers - 1:
 				ntype = NodeType.END
 			else:
-				ntype = NodeType.COMBAT if rng.randf() < 0.70 else NodeType.LOOT
+				# Ліва гілка (slot 0) — трохи більше LOOT (безпечніша)
+				# Права гілка (slot 1) — трохи більше COMBAT (ризикованіша)
+				var combat_chance := 0.45 if slot == 0 else 0.80
+				ntype = NodeType.COMBAT if rng.randf() < combat_chance else NodeType.LOOT
 			regional_nodes.append({
 				"id": node_id, "type": ntype,
 				"layer": layer, "slot": slot, "max_slots": count,
@@ -800,10 +1062,12 @@ func _generate_map() -> void:
 			node_id += 1
 		layers_nodes.append(ids)
 
+	# З'єднуємо шари
 	for layer in range(total_layers - 1):
 		var froms: Array[int] = layers_nodes[layer]
 		var tos:   Array[int] = layers_nodes[layer + 1]
 
+		# Кожен TO отримує хоча б одне вхідне ребро
 		var tos_shuffled := tos.duplicate()
 		tos_shuffled.shuffle()
 		for i in tos_shuffled.size():
@@ -812,6 +1076,7 @@ func _generate_map() -> void:
 			if not regional_edges.has([f, t]):
 				regional_edges.append([f, t])
 
+		# Кожен FROM має хоча б одне вихідне ребро
 		for f in froms:
 			var has_out := false
 			for edge in regional_edges:
@@ -821,8 +1086,10 @@ func _generate_map() -> void:
 				var t: int = tos[rng.randi() % tos.size()]
 				regional_edges.append([f, t])
 
-		for f in froms:
-			if rng.randf() < 0.35 and tos.size() > 1:
-				var t: int = tos[rng.randi() % tos.size()]
-				if not regional_edges.has([f, t]):
-					regional_edges.append([f, t])
+		# Невеликий шанс перехресного зв'язку між гілками (20%)
+		if tos.size() > 1:
+			for f in froms:
+				if rng.randf() < 0.20:
+					var t: int = tos[rng.randi() % tos.size()]
+					if not regional_edges.has([f, t]):
+						regional_edges.append([f, t])

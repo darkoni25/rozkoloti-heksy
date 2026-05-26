@@ -93,14 +93,21 @@ func _enter_node(nid: int) -> void:
 	elif t == GameState.NodeType.LOOT:
 		for key in LOOT_REWARDS:
 			GameState.resources[key] += LOOT_REWARDS[key]
-		_message = "Знайдено ресурси: Д+%d  К+%d  М+%d  Ї+%d" % [
+		var leveled  := GameState.award_xp(25)
+		var exp_loot := GameState.award_expedition_loot(false)
+		var loot_msg := "Знайдено: Д+%d  К+%d  М+%d  Ї+%d  |  %s" % [
 			LOOT_REWARDS["wood"], LOOT_REWARDS["stone"],
-			LOOT_REWARDS["metal"], LOOT_REWARDS["food"]
+			LOOT_REWARDS["metal"], LOOT_REWARDS["food"], exp_loot
 		]
+		if not leveled.is_empty():
+			loot_msg += "  |  " + "  ★  ".join(leveled)
+		_message = loot_msg
 		_update_reachable()
 		queue_redraw()
 
 	elif t == GameState.NodeType.END:
+		# XP за завершення вилазки
+		var leveled := GameState.award_xp(30)
 		# Позначити напрямок як досліджений
 		if GameState.current_direction != -1 and \
 				not GameState.explored_directions.has(GameState.current_direction):
@@ -109,7 +116,10 @@ func _enter_node(nid: int) -> void:
 		# записався в файл (інакше при завантаженні гра знову відкриє карту)
 		GameState.end_regional_map()
 		GameState.save_game()
-		_message = "Вилазка завершена! Повертаємось на базу."
+		var end_msg := "Вилазка завершена! Повертаємось на базу."
+		if not leveled.is_empty():
+			end_msg += "  " + "  ★  ".join(leveled)
+		_message = end_msg
 		queue_redraw()
 		await get_tree().create_timer(2.0).timeout
 		get_tree().change_scene_to_file("res://scenes/base/BaseScene.tscn")
@@ -163,17 +173,41 @@ func _draw() -> void:
 		draw_string(font, np + Vector2(-7, 7), icon,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, icon_col)
 
-		# Підказка при наведенні
-		if is_hov:
-			var hint: String
+		# Тултіп при наведенні
+		if is_hov and not visited:
+			var tt_title: String
+			var tt_body:  String
+			var tt_col:   Color
 			match ntype:
-				GameState.NodeType.COMBAT: hint = "Бій"
-				GameState.NodeType.LOOT:   hint = "Ресурси"
-				GameState.NodeType.END:    hint = "Вихід"
-				_:                         hint = ""
-			if hint != "":
-				draw_string(font, np + Vector2(-20, -NODE_R - 10), hint,
-						HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.85, 0.65))
+				GameState.NodeType.COMBAT:
+					tt_title = "⚔  Бій"
+					tt_body  = "Зустріч з ворогами\nПеремога дає XP та лут"
+					tt_col   = Color(0.90, 0.45, 0.35)
+				GameState.NodeType.LOOT:
+					tt_title = "◆  Знахідка"
+					tt_body  = "Ресурси та трофеї\nБез бою"
+					tt_col   = Color(0.45, 0.85, 0.55)
+				GameState.NodeType.END:
+					tt_title = "!  Кінець шляху"
+					tt_body  = "Повернення на базу\n+30 XP загону"
+					tt_col   = Color(0.75, 0.62, 0.30)
+				_:
+					tt_title = ""; tt_body = ""; tt_col = Color.WHITE
+			if tt_title != "":
+				var tw := 148.0; var th := 52.0
+				var tx := np.x - tw * 0.5
+				var ty := np.y - NODE_R - th - 8.0
+				# Тримаємо в межах екрана
+				tx = clampf(tx, 6.0, vp.x - tw - 6.0)
+				ty = maxf(ty, 6.0)
+				draw_rect(Rect2(tx, ty, tw, th), Color(0.06, 0.05, 0.04, 0.92))
+				draw_rect(Rect2(tx, ty, tw, th), tt_col * 0.6, false, 1.2)
+				draw_string(font, Vector2(tx + 8, ty + 15), tt_title,
+						HORIZONTAL_ALIGNMENT_LEFT, int(tw) - 12, 12, tt_col)
+				for li in tt_body.split("\n"):
+					draw_string(font, Vector2(tx + 8, ty + 30 + tt_body.split("\n").find(li) * 14),
+							li as String, HORIZONTAL_ALIGNMENT_LEFT, int(tw) - 12, 10,
+							Color(0.72, 0.70, 0.65))
 
 	# Повідомлення
 	if _message != "":

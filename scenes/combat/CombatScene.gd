@@ -395,8 +395,9 @@ func _on_combat_ended(winner: int) -> void:
 			var bonus_str := ""
 			if GameState.has_building(2): bonus_str += "  [злодії ×1.5]"
 			if GameState.has_building(6): bonus_str += "  [таверна XP×1.25]"
-			_combat_log = "Перемога!  XP+%d   Д+%d  К+%d  М+%d  Ї+%d%s" % [
-				xp_total, loot_w, loot_s, loot_m, loot_f, bonus_str
+			var exp_loot := GameState.award_expedition_loot(true)
+			_combat_log = "Перемога!  XP+%d   Д+%d  К+%d  М+%d  Ї+%d%s  |  %s" % [
+				xp_total, loot_w, loot_s, loot_m, loot_f, bonus_str, exp_loot
 			]
 	elif winner == Unit.Team.ENEMY:
 		_combat_log = "Поразка... Повертаємось на базу."
