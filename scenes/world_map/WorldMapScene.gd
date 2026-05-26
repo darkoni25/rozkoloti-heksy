@@ -59,6 +59,14 @@ const C_SEL       := Color(0.46, 0.34, 0.07)
 const C_BLOCKED   := Color(0.11, 0.16, 0.22)
 const C_BORDER    := Color(0.48, 0.40, 0.28)
 const C_BORDER_S  := Color(0.85, 0.65, 0.15)
+# Стиль попапів — темна фентезі-таверна
+const C_INK      := Color(0.039, 0.031, 0.020, 1.0)
+const C_BR_SHADOW:= Color(0.290, 0.220, 0.094, 1.0)
+const C_BR_FLARE := Color(0.941, 0.812, 0.471, 1.0)
+const C_BONE     := Color(0.910, 0.851, 0.702, 1.0)
+const C_PARCH    := Color(0.784, 0.706, 0.529, 1.0)
+const C_DIM      := Color(0.541, 0.471, 0.345, 1.0)
+const C_FADED    := Color(0.353, 0.302, 0.212, 1.0)
 const C_RES := {
 	"wood":  Color(0.55, 0.38, 0.10),
 	"stone": Color(0.55, 0.55, 0.55),
@@ -80,7 +88,7 @@ var _selected: int = -1
 
 # ── Готовність ───────────────────────────────────────────────────────────────
 func _ready() -> void:
-	RenderingServer.set_default_clear_color(Color(0.04, 0.04, 0.06))
+	RenderingServer.set_default_clear_color(Color(0.039, 0.031, 0.020))
 
 # ── Позиції ───────────────────────────────────────────────────────────────────
 func _center() -> Vector2:
@@ -204,7 +212,7 @@ func _draw() -> void:
 	draw_circle(center, BASE_R, C_BASE)
 	draw_arc(center, BASE_R, 0, TAU, 48, C_BORDER_S, 2.5)
 	draw_string(font, center + Vector2(0, 6), "БАЗА",
-			HORIZONTAL_ALIGNMENT_CENTER, int(BASE_R * 2), 13, Color.WHITE)
+			HORIZONTAL_ALIGNMENT_CENTER, int(BASE_R * 2), 13, C_BR_FLARE)
 
 	# ── Вузли (тільки відкриті) ──────────────────────────────────────────
 	for i in WORLD_NODES.size():
@@ -253,10 +261,10 @@ func _draw() -> void:
 
 		# Назва під вузлом
 		var name_col: Color
-		if explored:     name_col = Color(0.36, 0.34, 0.32)
-		elif reachable:  name_col = Color(0.78, 0.88, 0.65)
-		elif is_sel:     name_col = Color(1.00, 0.90, 0.50)
-		else:            name_col = Color(0.28, 0.28, 0.30)
+		if explored:     name_col = C_FADED
+		elif is_sel:     name_col = C_BR_FLARE
+		elif reachable:  name_col = C_BONE
+		else:            name_col = C_DIM
 		draw_string(font, np + Vector2(0, NODE_R + 15), node["name"] as String,
 				HORIZONTAL_ALIGNMENT_CENTER, 120, 11, name_col)
 
@@ -268,23 +276,23 @@ func _draw() -> void:
 	if _selected != -1:
 		var sel_node: Dictionary = WORLD_NODES[_selected]
 		var cr := _confirm_rect()
-		draw_rect(cr, Color(0.16, 0.36, 0.10))
-		draw_rect(cr, C_BORDER_S, false, 1.5)
+		draw_rect(cr, Color(0.14, 0.32, 0.08, 0.96))
+		draw_rect(cr, Color(C_BORDER_S, 0.9), false, 1.5)
 		draw_string(font, Vector2(cr.position.x, cr.position.y + 25),
 				"Вирушити: %s" % (sel_node["name"] as String),
-				HORIZONTAL_ALIGNMENT_CENTER, int(cr.size.x), 13, Color.WHITE)
+				HORIZONTAL_ALIGNMENT_CENTER, int(cr.size.x), 13, C_BONE)
 
 	# ── Кнопка назад ─────────────────────────────────────────────────────
 	var br := _back_rect()
-	draw_rect(br, Color(0.17, 0.12, 0.08, 0.9))
-	draw_rect(br, C_BORDER, false, 1.0)
+	draw_rect(br, Color(C_INK, 0.92))
+	draw_rect(br, Color(C_BORDER, 0.8), false, 1.0)
 	draw_string(font, br.position + Vector2(10, 21), "< До бази",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_PARCH)
 
 	# Підказка якщо нічого не вибрано
 	if _selected == -1:
 		draw_string(font, Vector2(vp.x * 0.5, vp.y - 18), "Обери локацію для вилазки",
-				HORIZONTAL_ALIGNMENT_CENTER, 300, 12, Color(0.48, 0.48, 0.48))
+				HORIZONTAL_ALIGNMENT_CENTER, 300, 12, C_DIM)
 
 # ── Тултіп при наведенні ─────────────────────────────────────────────────────
 func _draw_tooltip(font: Font, np: Vector2, node: Dictionary, vp: Vector2) -> void:
@@ -306,8 +314,8 @@ func _draw_tooltip(font: Font, np: Vector2, node: Dictionary, vp: Vector2) -> vo
 	tx = clampf(tx, 6.0, vp.x - tw - 6.0)
 	ty = maxf(ty, 6.0)
 
-	draw_rect(Rect2(tx, ty, tw, th), Color(0.06, 0.05, 0.04, 0.95))
-	draw_rect(Rect2(tx, ty, tw, th), DIFF_COL[diff] * 0.55, false, 1.2)
+	draw_rect(Rect2(tx, ty, tw, th), Color(C_INK, 0.96))
+	draw_rect(Rect2(tx, ty, tw, th), Color(DIFF_COL[diff], 0.6), false, 1.2)
 
 	# Складність
 	draw_string(font, Vector2(tx + 8, ty + 15),

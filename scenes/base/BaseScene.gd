@@ -60,6 +60,14 @@ const C_MENU_HOV := Color(0.40, 0.30, 0.10, 0.95)
 const C_MENU_NO  := Color(0.16, 0.08, 0.08, 0.95)
 const C_IN_PARTY := Color(0.10, 0.22, 0.10, 0.9)
 const C_HOV_ROW  := Color(0.20, 0.17, 0.10, 0.85)
+# ── Стиль попапів — темна фентезі-таверна ────────────────────────────────
+const C_INK      := Color(0.039, 0.031, 0.020, 1.0)  # #0a0805 фон попапу
+const C_BR_SHADOW:= Color(0.290, 0.220, 0.094, 1.0)  # #4a3818 темна бронза
+const C_BR_FLARE := Color(0.941, 0.812, 0.471, 1.0)  # #f0cf78 яскраве золото
+const C_BONE     := Color(0.910, 0.851, 0.702, 1.0)  # #e8d9b3 теплий білий
+const C_PARCH    := Color(0.784, 0.706, 0.529, 1.0)  # #c8b487 пергамент
+const C_DIM      := Color(0.541, 0.471, 0.345, 1.0)  # #8a7858 приглушений
+const C_FADED    := Color(0.353, 0.302, 0.212, 1.0)  # #5a4d36 дуже тьмяний
 
 # ── Стан ─────────────────────────────────────────────────────────────────
 var _resources: Dictionary[String, int]:
@@ -723,42 +731,60 @@ func _draw_levelup_popup(font: Font) -> void:
 	var pr        := _levelup_popup_rect()
 
 	# Затемнення
-	draw_rect(Rect2(0, 0, vp.x, vp.y), Color(0, 0, 0, 0.65))
-	# Панель
-	draw_rect(pr, Color(0.07, 0.05, 0.13, 0.98))
-	draw_rect(pr, Color(0.75, 0.65, 0.15, 0.9), false, 2)
-	# Заголовок
+	draw_rect(Rect2(0, 0, vp.x, vp.y), Color(0, 0, 0, 0.72))
+	# Тінь + тіло попапу
+	draw_rect(pr.grow(4.0), Color(0, 0, 0, 0.40))
+	draw_rect(pr, Color(0.12, 0.095, 0.065, 0.98))
+	draw_rect(pr, Color(C_BORDER_S, 0.85), false, 1.5)
+	# Заголовок — власна смуга
+	var hdr_r_lu := Rect2(pr.position.x, pr.position.y, pr.size.x, 38)
+	draw_rect(hdr_r_lu, Color(0.08, 0.062, 0.040, 0.95))
 	draw_string(font,
-		Vector2(pr.position.x + pr.size.x * 0.5, pr.position.y + 32),
+		Vector2(pr.position.x, pr.position.y + 25),
 		"★  %s  →  Рівень %d!" % [char_name, new_lvl],
-		HORIZONTAL_ALIGNMENT_CENTER, pr.size.x, 18, Color(1.0, 0.92, 0.35))
+		HORIZONTAL_ALIGNMENT_CENTER, int(pr.size.x), 16, C_BR_FLARE)
+	_draw_ornament_divider(pr.position.x + 8, pr.position.x + pr.size.x - 8,
+		pr.position.y + 38.0, Color(C_BORDER_S, 0.50))
 	draw_string(font,
-		Vector2(pr.position.x + pr.size.x * 0.5, pr.position.y + 58),
+		Vector2(pr.position.x, pr.position.y + 62),
 		"Оберіть покращення:",
-		HORIZONTAL_ALIGNMENT_CENTER, pr.size.x, 13, Color(0.8, 0.8, 0.8))
-	# Розділювач
-	draw_line(
-		Vector2(pr.position.x + 20, pr.position.y + 68),
-		Vector2(pr.position.x + pr.size.x - 20, pr.position.y + 68),
-		Color(0.5, 0.45, 0.1, 0.6), 1)
+		HORIZONTAL_ALIGNMENT_CENTER, int(pr.size.x), 13, C_PARCH)
+	# Розділювач-орнамент
+	_draw_ornament_divider(
+		pr.position.x + 20, pr.position.x + pr.size.x - 20,
+		pr.position.y + 74, Color(C_BORDER_S, 0.40))
 	# Кнопки вибору
 	for i in GameState.LEVELUP_CHOICES.size():
 		var ch  := GameState.LEVELUP_CHOICES[i] as Dictionary
 		var cr  := _levelup_choice_rect(i)
 		var hov := _levelup_hov == i
-		draw_rect(cr, Color(0.25, 0.17, 0.42, 0.97) if hov else Color(0.13, 0.09, 0.22, 0.93))
-		draw_rect(cr, Color(0.6, 0.5, 0.8, 0.9) if hov else Color(0.35, 0.28, 0.5, 0.7), false, 1)
+		draw_rect(cr, Color(0.25, 0.18, 0.04, 0.97) if hov else Color(0.10, 0.07, 0.03, 0.93))
+		draw_rect(cr, Color(C_BORDER_S, 0.9) if hov else Color(C_BORDER, 0.7), false, 1.0)
 		draw_string(font,
-			Vector2(cr.position.x + cr.size.x * 0.5, cr.position.y + 21),
+			Vector2(cr.position.x, cr.position.y + 21),
 			"%s  %s" % [str(ch.get("icon", "")), str(ch.get("label", ""))],
-			HORIZONTAL_ALIGNMENT_CENTER, cr.size.x - 10, 14,
-			Color.WHITE if hov else Color(0.85, 0.85, 0.85))
+			HORIZONTAL_ALIGNMENT_CENTER, int(cr.size.x), 14,
+			C_BR_FLARE if hov else C_PARCH)
 	_draw_popup_fade(_levelup_popup_rect())
 
 # Накладає темний шар поверх попапу — зникає в міру того як _popup_alpha → 1
 func _draw_popup_fade(pr: Rect2) -> void:
 	if _popup_alpha >= 1.0: return
-	draw_rect(pr, Color(0.04, 0.03, 0.06, 1.0 - _popup_alpha))
+	draw_rect(pr, Color(0.04, 0.03, 0.02, 1.0 - _popup_alpha))
+
+# Горизонтальна лінія з алмазом у центрі — декоративний розділювач
+func _draw_ornament_divider(x1: float, x2: float, y: float, col: Color) -> void:
+	var mid  := (x1 + x2) * 0.5
+	var gap  := 9.0
+	draw_line(Vector2(x1, y), Vector2(mid - gap, y), col, 1.0)
+	draw_line(Vector2(mid + gap, y), Vector2(x2, y), col, 1.0)
+	# Алмаз
+	var d := 4.0
+	draw_line(Vector2(mid, y - d), Vector2(mid + d, y), Color(col, col.a * 0.85), 1.0)
+	draw_line(Vector2(mid + d, y), Vector2(mid, y + d), Color(col, col.a * 0.85), 1.0)
+	draw_line(Vector2(mid, y + d), Vector2(mid - d, y), Color(col, col.a * 0.85), 1.0)
+	draw_line(Vector2(mid - d, y), Vector2(mid, y - d), Color(col, col.a * 0.85), 1.0)
+	draw_circle(Vector2(mid, y), 1.5, Color(C_BR_FLARE, col.a))
 
 func _draw_rest_anim(font: Font, vp: Vector2) -> void:
 	var t    := _rest_anim / 1.2                          # 0..1 нормалізований
@@ -799,35 +825,39 @@ func _draw_rest_anim(font: Font, vp: Vector2) -> void:
 func _draw_bld_popup(font: Font) -> void:
 	var pr  := _bld_popup_rect()
 	var vp  := get_viewport_rect().size
-	draw_rect(Rect2(0, 0, vp.x, vp.y), Color(0, 0, 0, 0.55))
-	draw_rect(pr, Color(0.06, 0.05, 0.03, 0.97))
-	draw_rect(pr, C_BORDER_S, false, 1.5)
+	draw_rect(Rect2(0, 0, vp.x, vp.y), Color(0, 0, 0, 0.72))
+	# Тінь під попапом
+	draw_rect(pr.grow(4.0), Color(0, 0, 0, 0.45))
+	# Фон попапу — темно-коричневий, але не чорний
+	draw_rect(pr, Color(0.12, 0.095, 0.065, 0.98))
+	draw_rect(pr, Color(C_BORDER_S, 0.85), false, 1.5)
 
-	# Заголовок + кнопка закрити
+	# Заголовок — власна смуга
+	var hdr_r := Rect2(pr.position.x, pr.position.y, pr.size.x, 38)
+	draw_rect(hdr_r, Color(0.08, 0.062, 0.040, 0.95))
 	var bname: String = BUILDINGS[_bld_bid]["name"] as String
 	draw_string(font, pr.position + Vector2(12, 24), bname,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.95, 0.80, 0.30))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 16, C_BR_FLARE)
 	var cr := _bld_close_rect()
-	draw_rect(cr, Color(0.25, 0.10, 0.10, 0.9))
-	draw_rect(cr, C_BORDER, false, 1.0)
+	draw_rect(cr, Color(0.22, 0.06, 0.06, 0.95))
+	draw_rect(cr, Color(C_BORDER, 0.8), false, 1.0)
 	draw_string(font, cr.position + Vector2(7, 18), "✕",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
-	draw_line(Vector2(pr.position.x + 8, pr.position.y + 36),
-			Vector2(pr.position.x + pr.size.x - 8, pr.position.y + 36),
-			Color(C_BORDER, 0.5), 1.0)
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(C_BONE, 0.9))
+	_draw_ornament_divider(pr.position.x + 8, pr.position.x + pr.size.x - 8,
+			pr.position.y + 38.0, Color(C_BORDER_S, 0.55))
 
 	if not GameState.BUILDING_ACTIONS.has(_bld_bid):
 		draw_string(font, pr.position + Vector2(12, 70),
 				"Ця будівля поки не має дій...",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.5, 0.5, 0.5))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_DIM)
 		_draw_popup_fade(pr); return
 
 	var acts: Array = GameState.BUILDING_ACTIONS[_bld_bid] as Array
 
 	# ── Ліва колонка: список рецептів ─────────────────────────────────────
 	var lr := _bld_list_rect()
-	draw_rect(lr, Color(0.05, 0.04, 0.02, 0.6))
-	draw_rect(lr, C_BORDER, false, 0.8)
+	draw_rect(lr, Color(0.06, 0.05, 0.03, 0.55))
+	draw_rect(lr, Color(C_BORDER, 0.7), false, 0.8)
 
 	var rmap: Dictionary = {"wood": "Дер", "stone": "Кам", "metal": "Мет", "food": "Їжа"}
 	for i in acts.size():
@@ -838,19 +868,19 @@ func _draw_bld_popup(font: Font) -> void:
 		var afford := GameState.can_afford_action(_bld_bid, i)
 
 		var bg: Color
-		if is_sel:               bg = Color(0.28, 0.20, 0.04, 0.98)
-		elif is_hov and afford:  bg = Color(0.20, 0.15, 0.04, 0.92)
-		elif is_hov:             bg = Color(0.18, 0.08, 0.08, 0.88)
-		elif afford:             bg = Color(0.12, 0.10, 0.04, 0.85)
-		else:                    bg = Color(0.08, 0.07, 0.07, 0.80)
+		if is_sel:               bg = Color(0.26, 0.19, 0.04, 0.98)
+		elif is_hov and afford:  bg = Color(0.18, 0.13, 0.04, 0.92)
+		elif is_hov:             bg = Color(0.16, 0.07, 0.07, 0.88)
+		elif afford:             bg = Color(0.10, 0.08, 0.03, 0.85)
+		else:                    bg = Color(0.06, 0.05, 0.04, 0.80)
 		draw_rect(ar, bg)
 		if is_sel:
-			draw_rect(ar, Color(0.85, 0.65, 0.20, 0.9), false, 1.5)
+			draw_rect(ar, Color(C_BORDER_S, 0.95), false, 1.5)
 		elif is_hov:
-			draw_rect(ar, C_BORDER_S if afford else Color(0.30,0.20,0.20), false, 1.0)
+			draw_rect(ar, C_BORDER_S if afford else Color(0.30, 0.15, 0.15), false, 1.0)
 
-		var nc := Color(0.95, 0.82, 0.35) if afford else Color(0.50, 0.46, 0.36)
-		if is_sel: nc = Color(1.0, 0.92, 0.45)
+		var nc := C_PARCH if afford else C_FADED
+		if is_sel: nc = C_BR_FLARE
 		draw_string(font, ar.position + Vector2(6, 15),
 				act.get("label", "?") as String,
 				HORIZONTAL_ALIGNMENT_LEFT, 150, 12, nc)
@@ -866,25 +896,25 @@ func _draw_bld_popup(font: Font) -> void:
 			var nm := (meta.get("name", "?") as String).split(" ")[0]
 			cost_parts.append("%s×%d" % [nm, int(lc[id_key])])
 		if not cost_parts.is_empty():
-			var cost_col := Color(0.50, 0.88, 0.50) if afford else Color(0.75, 0.35, 0.35)
+			var cost_col := Color(0.45, 0.80, 0.45) if afford else Color(0.75, 0.35, 0.35)
 			draw_string(font, ar.position + Vector2(6, 31),
 					"  ".join(cost_parts), HORIZONTAL_ALIGNMENT_LEFT, lr.size.x - 12, 9, cost_col)
 
-	# Роздільник між колонками
+	# Роздільник між колонками (вертикальна лінія)
 	draw_line(Vector2(pr.position.x + 248, pr.position.y + 44),
 			Vector2(pr.position.x + 248, pr.position.y + pr.size.y - 8),
-			Color(C_BORDER, 0.6), 1.0)
+			Color(C_BORDER, 0.55), 1.0)
 
 	# ── Права колонка: превʼю предмету ────────────────────────────────────
 	var pv := _bld_preview_rect()
-	draw_rect(pv, Color(0.07, 0.05, 0.09, 0.6))
-	draw_rect(pv, C_BORDER, false, 0.8)
+	draw_rect(pv, Color(0.06, 0.05, 0.03, 0.50))
+	draw_rect(pv, Color(C_BORDER, 0.6), false, 0.8)
 
 	if _bld_sel == -1:
 		# Підказка — нічого не обрано
-		draw_string(font, Vector2(pv.position.x + pv.size.x * 0.5, pv.position.y + 80),
+		draw_string(font, Vector2(pv.position.x, pv.position.y + pv.size.y * 0.5),
 				"← Обери рецепт",
-				HORIZONTAL_ALIGNMENT_CENTER, int(pv.size.x), 12, Color(0.42, 0.40, 0.48))
+				HORIZONTAL_ALIGNMENT_CENTER, int(pv.size.x), 12, C_FADED)
 	else:
 		var sel_act: Dictionary = acts[_bld_sel] as Dictionary
 		var effect:  String     = sel_act.get("effect", "") as String
@@ -898,7 +928,7 @@ func _draw_bld_popup(font: Font) -> void:
 		# Назва дії
 		draw_string(font, Vector2(px, py),
 				sel_act.get("label", "?") as String,
-				HORIZONTAL_ALIGNMENT_LEFT, int(pw), 14, Color(0.95, 0.88, 0.50))
+				HORIZONTAL_ALIGNMENT_LEFT, int(pw), 14, C_BR_FLARE)
 		py += 20.0
 
 		if effect == "craft_item":
@@ -914,7 +944,7 @@ func _draw_bld_popup(font: Font) -> void:
 			var slot_lbl: String = slot_label_map.get(slot, slot) as String
 
 			draw_string(font, Vector2(px, py), "Слот: " + slot_lbl,
-					HORIZONTAL_ALIGNMENT_LEFT, int(pw), 11, Color(0.60, 0.58, 0.75))
+					HORIZONTAL_ALIGNMENT_LEFT, int(pw), 11, C_DIM)
 			py += 18.0
 
 			# Тип броні
@@ -922,11 +952,10 @@ func _draw_bld_popup(font: Font) -> void:
 			if at >= 0:
 				var atype_names: Array[String] = ["Тканина", "Шкіра", "Кольчуга", "Пластина"]
 				draw_string(font, Vector2(px, py), "Тип: " + atype_names[at],
-						HORIZONTAL_ALIGNMENT_LEFT, int(pw), 11, Color(0.60, 0.58, 0.75))
+						HORIZONTAL_ALIGNMENT_LEFT, int(pw), 11, C_DIM)
 				py += 18.0
 
-			draw_line(Vector2(px, py - 4), Vector2(px + pw, py - 4),
-					Color(C_BORDER, 0.35), 1.0)
+			_draw_ornament_divider(px, px + pw, py - 4, Color(C_BORDER, 0.40))
 
 			# Бойові характеристики
 			var stat_defs: Array[Array] = [
@@ -971,15 +1000,14 @@ func _draw_bld_popup(font: Font) -> void:
 			# Не крафт — показуємо опис ефекту
 			draw_string(font, Vector2(px, py),
 					sel_act.get("desc", "") as String,
-					HORIZONTAL_ALIGNMENT_LEFT, int(pw), 12, Color(0.70, 0.90, 0.70))
+					HORIZONTAL_ALIGNMENT_LEFT, int(pw), 12, Color(0.65, 0.90, 0.65))
 			py += 20.0
 
 		# Вартість у правій панелі (детально)
 		py = pv.position.y + pv.size.y - 90.0
-		draw_line(Vector2(px, py - 6), Vector2(px + pw, py - 6),
-				Color(C_BORDER, 0.4), 1.0)
+		_draw_ornament_divider(px, px + pw, py - 6, Color(C_BORDER, 0.45))
 		draw_string(font, Vector2(px, py), "Вартість:",
-				HORIZONTAL_ALIGNMENT_LEFT, int(pw), 10, Color(0.45, 0.43, 0.50))
+				HORIZONTAL_ALIGNMENT_LEFT, int(pw), 10, C_DIM)
 		py += 14.0
 		var cost_sel: Dictionary = sel_act.get("cost", {}) as Dictionary
 		var lc_sel:   Dictionary = sel_act.get("loot_cost", {}) as Dictionary
@@ -1003,49 +1031,52 @@ func _draw_bld_popup(font: Font) -> void:
 		elif effect == "award_party_xp": btn_label = "Отримати XP"
 
 		if afford_sel:
-			draw_rect(cb, Color(0.22, 0.16, 0.04, 0.97))
-			draw_rect(cb, Color(0.85, 0.65, 0.20, 0.9), false, 1.5)
+			draw_rect(cb, Color(0.20, 0.15, 0.04, 0.97))
+			draw_rect(cb, Color(C_BORDER_S, 0.92), false, 1.5)
 			draw_string(font, Vector2(cb.position.x, cb.position.y + 21), btn_label,
-					HORIZONTAL_ALIGNMENT_CENTER, int(cb.size.x), 13, Color(1.0, 0.92, 0.50))
+					HORIZONTAL_ALIGNMENT_CENTER, int(cb.size.x), 13, C_BR_FLARE)
 		else:
-			draw_rect(cb, Color(0.12, 0.10, 0.10, 0.9))
-			draw_rect(cb, Color(0.30, 0.25, 0.25, 0.7), false, 1.0)
+			draw_rect(cb, Color(0.10, 0.08, 0.07, 0.9))
+			draw_rect(cb, Color(C_FADED, 0.6), false, 1.0)
 			draw_string(font, Vector2(cb.position.x, cb.position.y + 21), "Недостатньо ресурсів",
-					HORIZONTAL_ALIGNMENT_CENTER, int(cb.size.x), 11, Color(0.40, 0.38, 0.38))
+					HORIZONTAL_ALIGNMENT_CENTER, int(cb.size.x), 11, C_FADED)
 
 	# Повідомлення результату (внизу лівої колонки)
 	if _bld_msg != "":
 		var my := pr.position.y + pr.size.y - 22.0
 		draw_string(font, Vector2(pr.position.x + 12, my), _bld_msg,
-				HORIZONTAL_ALIGNMENT_LEFT, 236, 11, Color(1.0, 0.88, 0.30))
+				HORIZONTAL_ALIGNMENT_LEFT, 236, 11, C_BR_FLARE)
 
 	_draw_popup_fade(pr)
 
 func _draw_inv_popup(font: Font) -> void:
 	var pr := _inv_popup_rect()
 	var vp := get_viewport_rect().size
-	draw_rect(Rect2(0, 0, vp.x, vp.y), Color(0, 0, 0, 0.55))
-	draw_rect(pr, Color(0.07, 0.05, 0.10, 0.97))
-	draw_rect(pr, C_BORDER_S, false, 1.5)
-	draw_string(font, pr.position + Vector2(12, 24), "Інвентар",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.65, 0.90, 1.0))
+	draw_rect(Rect2(0, 0, vp.x, vp.y), Color(0, 0, 0, 0.72))
+	draw_rect(pr.grow(4.0), Color(0, 0, 0, 0.40))
+	draw_rect(pr, Color(0.12, 0.095, 0.065, 0.98))
+	draw_rect(pr, Color(C_BORDER_S, 0.85), false, 1.5)
+	# Заголовок — власна смуга
+	var hdr_r_inv := Rect2(pr.position.x, pr.position.y, pr.size.x, 38)
+	draw_rect(hdr_r_inv, Color(0.08, 0.062, 0.040, 0.95))
+	draw_string(font, pr.position + Vector2(12, 25), "Інвентар",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 16, C_BR_FLARE)
 	var cr := _inv_close_rect()
-	draw_rect(cr, Color(0.25, 0.10, 0.10, 0.9))
-	draw_rect(cr, C_BORDER, false, 1.0)
+	draw_rect(cr, Color(0.18, 0.06, 0.06, 0.95))
+	draw_rect(cr, Color(C_BORDER, 0.8), false, 1.0)
 	draw_string(font, cr.position + Vector2(7, 18), "✕",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(C_BONE, 0.9))
 	var tabs := ["Речі", "Трофеї"]
 	for i in tabs.size():
 		var tr := _inv_tab_rect(i)
 		var is_a := i == _inv_tab
-		draw_rect(tr, Color(0.20, 0.28, 0.38, 0.95) if is_a else Color(0.12, 0.10, 0.15, 0.85))
-		draw_rect(tr, C_BORDER_S if is_a else C_BORDER, false, 1.0)
+		draw_rect(tr, Color(0.22, 0.16, 0.04, 0.95) if is_a else Color(0.08, 0.065, 0.042, 0.85))
+		draw_rect(tr, C_BORDER_S if is_a else Color(C_BORDER, 0.6), false, 1.0)
 		draw_string(font, tr.position + Vector2(0, 19), tabs[i],
 				HORIZONTAL_ALIGNMENT_CENTER, int(tr.size.x), 13,
-				Color.WHITE if is_a else Color(0.65, 0.65, 0.65))
-	draw_line(Vector2(pr.position.x + 8, pr.position.y + 70),
-			Vector2(pr.position.x + pr.size.x - 8, pr.position.y + 70),
-			Color(C_BORDER, 0.5), 1.0)
+				C_BR_FLARE if is_a else C_DIM)
+	_draw_ornament_divider(pr.position.x + 8, pr.position.x + pr.size.x - 8,
+			pr.position.y + 70, Color(C_BORDER_S, 0.42))
 	if _inv_tab == 0:
 		_draw_inv_equipment(font, pr)
 	else:
@@ -1057,7 +1088,7 @@ func _draw_inv_equipment(font: Font, pr: Rect2) -> void:
 	if items.is_empty():
 		draw_string(font, pr.position + Vector2(12, 110),
 				"Інвентар порожній. Побудуй Кузню для отримання предметів.",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.50, 0.50, 0.50))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_DIM)
 		return
 	var max_rows := int((pr.size.y - 84) / 38)
 	_inv_scroll = clampi(_inv_scroll, 0, maxi(0, items.size() - max_rows))
@@ -1065,8 +1096,8 @@ func _draw_inv_equipment(font: Font, pr: Rect2) -> void:
 		var idx  := _inv_scroll + ri
 		var item := items[idx] as Dictionary
 		var rr   := _inv_row_rect(ri)
-		draw_rect(rr, Color(0.11, 0.09, 0.15, 0.9))
-		draw_rect(rr, C_BORDER, false, 0.8)
+		draw_rect(rr, Color(0.08, 0.06, 0.04, 0.9))
+		draw_rect(rr, Color(C_BORDER, 0.55), false, 0.8)
 		# Власник
 		var owner_str := ""
 		for ck in GameState.equipped:
@@ -1081,28 +1112,28 @@ func _draw_inv_equipment(font: Font, pr: Rect2) -> void:
 		var slabel := GameState.SLOT_LABELS.get(islot, islot) as String
 		var stats  := _item_stat_str(item)
 		draw_string(font, rr.position + Vector2(6, 14), iname,
-				HORIZONTAL_ALIGNMENT_LEFT, 210, 13, Color(0.92, 0.88, 1.0))
+				HORIZONTAL_ALIGNMENT_LEFT, 210, 13, C_BONE)
 		draw_string(font, rr.position + Vector2(6, 28),
 				"[%s]  %s" % [slabel, stats],
-				HORIZONTAL_ALIGNMENT_LEFT, 340, 10, Color(0.58, 0.54, 0.68))
-		var oc := Color(0.40, 0.90, 0.40) if owner_str != "" else Color(0.38, 0.38, 0.38)
+				HORIZONTAL_ALIGNMENT_LEFT, 340, 10, C_DIM)
+		var oc := Color(0.45, 0.88, 0.45) if owner_str != "" else C_FADED
 		draw_string(font, rr.position + Vector2(rr.size.x - 82, 14),
 				owner_str if owner_str != "" else "вільна",
 				HORIZONTAL_ALIGNMENT_LEFT, 80, 11, oc)
 	if items.size() > max_rows:
 		draw_string(font, pr.position + Vector2(pr.size.x - 58, pr.size.y - 8),
 				"%d/%d" % [mini(_inv_scroll + max_rows, items.size()), items.size()],
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.50, 0.50, 0.50))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, C_FADED)
 		draw_string(font, pr.position + Vector2(8, pr.size.y - 8),
 				"↑↓ прокрутка колесом миші",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.38, 0.38, 0.38))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, C_FADED)
 
 func _draw_inv_loot(font: Font, pr: Rect2) -> void:
 	var loot := GameState.loot_bag
 	if loot.is_empty():
 		draw_string(font, pr.position + Vector2(12, 110),
 				"Трофеїв ще немає. Ходи у вилазки!",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.50, 0.50, 0.50))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_DIM)
 		return
 	var rarity_col: Array[Color] = [
 		Color(0.75, 0.75, 0.75),
@@ -1121,8 +1152,8 @@ func _draw_inv_loot(font: Font, pr: Rect2) -> void:
 		var rarity := clampi(int(meta.get("rarity", 0)), 0, 2)
 		var col    := rarity_col[rarity]
 		var rr     := _inv_row_rect(ri)
-		draw_rect(rr, Color(0.09, 0.07, 0.12, 0.9))
-		draw_rect(rr, Color(col.r, col.g, col.b, 0.28), false, 0.8)
+		draw_rect(rr, Color(0.07, 0.06, 0.04, 0.9))
+		draw_rect(rr, Color(col.r, col.g, col.b, 0.30), false, 0.8)
 		draw_string(font, rr.position + Vector2(6, 22), iname,
 				HORIZONTAL_ALIGNMENT_LEFT, 260, 13, col)
 		draw_string(font, rr.position + Vector2(270, 22), rarity_label[rarity],
@@ -1132,18 +1163,21 @@ func _draw_inv_loot(font: Font, pr: Rect2) -> void:
 		ri += 1
 
 func _draw_resources(font: Font, vp: Vector2) -> void:
-	draw_rect(Rect2(0, 0, vp.x, TOP_H), Color(0, 0, 0, 0.72))
+	draw_rect(Rect2(0, 0, vp.x, TOP_H), Color(0.02, 0.016, 0.010, 0.92))
+	draw_line(Vector2(0, TOP_H - 1), Vector2(vp.x - RIGHT_W, TOP_H - 1),
+			Color(C_BR_SHADOW, 0.7), 1.0)
 	var labels: Array[String] = ["Дерево", "Камінь", "Метал", "Їжа"]
 	var keys:   Array[String] = ["wood",   "stone",  "metal", "food"]
-	var colors: Array[Color]  = [Color(0.6,0.4,0.1), Color(0.55,0.55,0.55), Color(0.4,0.6,0.8), Color(0.3,0.7,0.3)]
+	var colors: Array[Color]  = [Color(0.7,0.5,0.15), Color(0.60,0.58,0.55), Color(0.45,0.65,0.85), Color(0.35,0.72,0.35)]
 	var cols := 4
 	var sw   := (vp.x - RIGHT_W) / cols
 	for i in cols:
 		var cx := sw * i + sw * 0.5
-		draw_rect(Rect2(cx - 10, 16, 20, 20), colors[i])
+		draw_rect(Rect2(cx - 10, 14, 20, 16), colors[i])
+		draw_rect(Rect2(cx - 10, 14, 20, 16), Color(C_BR_SHADOW, 0.4), false, 0.8)
 		var val: int = _resources[keys[i]]
-		draw_string(font, Vector2(cx - 38, 50), "%s: %d" % [labels[i], val],
-				HORIZONTAL_ALIGNMENT_CENTER, 76, 14, Color.WHITE)
+		draw_string(font, Vector2(cx - 38, 36), "%s: %d" % [labels[i], val],
+				HORIZONTAL_ALIGNMENT_CENTER, 76, 13, C_BONE)
 
 func _draw_slots(font: Font) -> void:
 	for i in 8:
@@ -1177,8 +1211,8 @@ func _draw_slots(font: Font) -> void:
 
 func _draw_right_panel(font: Font, vp: Vector2) -> void:
 	var rx := vp.x - RIGHT_W
-	draw_rect(Rect2(rx, 0, RIGHT_W, vp.y), Color(0, 0, 0, 0.72))
-	draw_line(Vector2(rx, 0), Vector2(rx, vp.y), C_BORDER, 1.0)
+	draw_rect(Rect2(rx, 0, RIGHT_W, vp.y), Color(0.02, 0.016, 0.010, 0.88))
+	draw_line(Vector2(rx, 0), Vector2(rx, vp.y), Color(C_BR_SHADOW, 0.8), 1.0)
 
 	if _sel_slot != -1:
 		# ── Картка будівлі (статична) ───────────────────────────────────
@@ -1189,15 +1223,15 @@ func _draw_right_panel(font: Font, vp: Vector2) -> void:
 
 		draw_string(font, Vector2(rx + 8, TOP_H + 20),
 				b["name"] as String,
-				HORIZONTAL_ALIGNMENT_LEFT, RIGHT_W - 10, 15, Color(0.9, 0.8, 0.3))
+				HORIZONTAL_ALIGNMENT_LEFT, RIGHT_W - 10, 15, C_BR_FLARE)
 
 		if built:
 			draw_string(font, Vector2(rx + 8, TOP_H + 42),
 					"✓ Побудовано",
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.5, 0.9, 0.5))
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.45, 0.88, 0.45))
 		else:
 			var w: int = b["wood"]; var s: int = b["stone"]; var m: int = b["metal"]
-			var cost_col := Color(0.6, 0.9, 0.5) if afford else Color(0.9, 0.4, 0.4)
+			var cost_col := Color(0.55, 0.85, 0.45) if afford else Color(0.85, 0.38, 0.38)
 			draw_string(font, Vector2(rx + 8, TOP_H + 42),
 					"Д:%d  К:%d  М:%d" % [w, s, m],
 					HORIZONTAL_ALIGNMENT_LEFT, -1, 12, cost_col)
@@ -1207,19 +1241,19 @@ func _draw_right_panel(font: Font, vp: Vector2) -> void:
 		if companion != "":
 			draw_string(font, Vector2(rx + 8, TOP_H + 62),
 					"→ " + companion,
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.6, 0.72, 0.9))
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, C_PARCH)
 		if effect != "":
 			draw_string(font, Vector2(rx + 8, TOP_H + 78),
 					effect,
-					HORIZONTAL_ALIGNMENT_LEFT, RIGHT_W - 12, 11, Color(0.7, 0.7, 0.7))
+					HORIZONTAL_ALIGNMENT_LEFT, RIGHT_W - 12, 11, C_DIM)
 
 		if not built:
 			var br      := _build_btn_rect()
-			var btn_col := Color(0.15, 0.48, 0.15, 0.95) if afford else Color(0.35, 0.18, 0.18, 0.9)
+			var btn_col := Color(0.10, 0.36, 0.10, 0.95) if afford else Color(0.28, 0.12, 0.12, 0.9)
 			draw_rect(br, btn_col)
-			draw_rect(br, C_BORDER, false, 1)
+			draw_rect(br, Color(C_BORDER, 0.85), false, 1.0)
 			var btn_lbl := "Побудувати" if afford else "Не вистачає"
-			var lbl_col := Color.WHITE if afford else Color(0.6, 0.6, 0.6)
+			var lbl_col := C_BONE if afford else C_FADED
 			draw_string(font, Vector2(br.position.x + br.size.x * 0.5, br.position.y + 23),
 					btn_lbl, HORIZONTAL_ALIGNMENT_CENTER, br.size.x, 13, lbl_col)
 	else:
@@ -1227,13 +1261,13 @@ func _draw_right_panel(font: Font, vp: Vector2) -> void:
 		var h: Dictionary = GameState.hero
 		if not h.is_empty():
 			var hr := Rect2(rx + 4, TOP_H + 8, RIGHT_W - 8, 82)
-			draw_rect(hr, Color(0.18, 0.14, 0.07, 0.9))
-			draw_rect(hr, Color(0.85, 0.65, 0.15), false, 1.5)
+			draw_rect(hr, Color(0.10, 0.08, 0.03, 0.92))
+			draw_rect(hr, Color(C_BORDER_S, 0.85), false, 1.5)
 			# Кружок + рівень
 			var hcol     := GameState.get_hero_color()
 			var hinitial := (h.get("name", "Г") as String).left(1).to_upper()
 			draw_circle(Vector2(rx + 24, TOP_H + 45), 14, hcol)
-			draw_arc(Vector2(rx + 24, TOP_H + 45), 14, 0, TAU, 32, Color.WHITE, 2.0)
+			draw_arc(Vector2(rx + 24, TOP_H + 45), 14, 0, TAU, 32, Color(C_BR_FLARE, 0.9), 2.0)
 			draw_string(font, Vector2(rx + 19, TOP_H + 50), hinitial,
 					HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 			# Ім'я та спеціалізація
@@ -1241,10 +1275,10 @@ func _draw_right_panel(font: Font, vp: Vector2) -> void:
 			var hspec: String = h.get("spec_name", "") as String
 			var hlvl:  int    = GameState.get_hero_level()
 			draw_string(font, Vector2(rx + 44, TOP_H + 25), hname,
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.95, 0.80, 0.20))
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 14, C_BR_FLARE)
 			draw_string(font, Vector2(rx + 44, TOP_H + 40),
 					"%s  Рів.%d" % [hspec, hlvl],
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.65, 0.65, 0.65))
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, C_DIM)
 			# Стан / стати
 			if GameState.hero_recovery_raids > 0:
 				draw_string(font, Vector2(rx + 8, TOP_H + 57),
@@ -1254,7 +1288,7 @@ func _draw_right_panel(font: Font, vp: Vector2) -> void:
 				var gender_sym := "♂" if h.get("gender", "m") == "m" else "♀"
 				draw_string(font, Vector2(rx + 44, TOP_H + 55),
 						"%s  HP:%d  АТК:%d" % [gender_sym, h.get("hp", 50) as int, h.get("dmg", 12) as int],
-						HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.55, 0.55, 0.55))
+						HORIZONTAL_ALIGNMENT_LEFT, -1, 10, C_FADED)
 			# XP-бар
 			var xp_bar_x := rx + 8.0;  var xp_bar_w := float(RIGHT_W - 16)
 			var xp_by    := TOP_H + 72.0
@@ -1264,20 +1298,22 @@ func _draw_right_panel(font: Font, vp: Vector2) -> void:
 				var xp_s := GameState.LEVEL_XP[hlvl - 1]
 				var xp_e := GameState.LEVEL_XP[hlvl]
 				xp_ratio = clampf(float(hxp - xp_s) / float(xp_e - xp_s), 0.0, 1.0)
-			draw_rect(Rect2(xp_bar_x, xp_by, xp_bar_w, 6), Color(0.10, 0.10, 0.10))
+			draw_rect(Rect2(xp_bar_x, xp_by, xp_bar_w, 6), Color(0.06, 0.05, 0.03))
 			draw_rect(Rect2(xp_bar_x, xp_by, xp_bar_w * xp_ratio, 6),
-					Color(0.55, 0.42, 0.80) if hlvl < GameState.MAX_LEVEL else Color(0.90, 0.75, 0.20))
+					Color(C_BR_SHADOW, 1.0) if hlvl < GameState.MAX_LEVEL else Color(C_BR_FLARE, 1.0))
+			draw_rect(Rect2(xp_bar_x, xp_by, xp_bar_w * xp_ratio, 6),
+					Color(C_BORDER_S, 0.45) if hlvl < GameState.MAX_LEVEL else Color(C_BR_FLARE, 0.7), false, 1.0)
 			var xp_label: String = "XP %d" % hxp if hlvl >= GameState.MAX_LEVEL \
 					else "XP %d / %d" % [hxp, GameState.LEVEL_XP[hlvl]]
 			draw_string(font, Vector2(xp_bar_x, xp_by - 1), xp_label,
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0.55, 0.50, 0.70))
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 9, C_DIM)
 
 		# ── Загін / компаньйони ──────────────────────────────────────────
 		var party_count: int = GameState.raid_party.size()
 		draw_string(font, Vector2(rx + 8, TOP_H + 88), "Загін  (%d/3):" % party_count,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.9, 0.80, 0.5))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, C_PARCH)
 		draw_string(font, Vector2(rx + 8, TOP_H + 104), "клік — додати/прибрати",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.5, 0.5, 0.5))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, C_FADED)
 
 		var rows := GameState.get_available_companions()
 		for i in rows.size():
@@ -1296,9 +1332,9 @@ func _draw_right_panel(font: Font, vp: Vector2) -> void:
 					false, 1.0)
 
 			var prefix := "[+] " if in_party else "[ ] "
-			var name_col := Color(0.7, 1.0, 0.7) if in_party else Color(0.75, 0.75, 0.75)
+			var name_col := C_BR_FLARE if in_party else C_PARCH
 			var clvl: int = GameState.get_companion_level(uid)
-			var lvl_col := Color(0.85, 0.75, 1.0) if in_party else Color(0.50, 0.47, 0.55)
+			var lvl_col := C_PARCH if in_party else C_DIM
 			draw_string(font, rr.position + Vector2(6, 16), prefix + (c["name"] as String),
 					HORIZONTAL_ALIGNMENT_LEFT, -1, 13, name_col)
 			draw_string(font, rr.position + Vector2(rr.size.x - 36, 16),
@@ -1319,47 +1355,50 @@ func _draw_right_panel(font: Font, vp: Vector2) -> void:
 				var xp_cs: int = GameState.LEVEL_XP[clvl - 1]
 				xp_cratio = clampf(float(cxp - xp_cs) / float(cxp_next - xp_cs), 0.0, 1.0)
 			draw_rect(Rect2(rr.position.x, rr.position.y + rr.size.y - 3, rr.size.x, 3),
-					Color(0.10, 0.10, 0.16))
+					Color(0.06, 0.05, 0.03))
 			draw_rect(Rect2(rr.position.x, rr.position.y + rr.size.y - 3, rr.size.x * xp_cratio, 3),
-					Color(0.50, 0.38, 0.75) if clvl < GameState.MAX_LEVEL else Color(0.90, 0.75, 0.20))
+					Color(C_BR_SHADOW, 1.0) if clvl < GameState.MAX_LEVEL else Color(C_BR_FLARE, 1.0))
 			var xp_str: String = ("MAX" if clvl >= GameState.MAX_LEVEL else "%d/%d" % [cxp, cxp_next])
 			draw_string(font, rr.position + Vector2(6, 32),
 					"HP:%d  АТК:%d  %s  XP:%s" % [hp, dmg, range_str, xp_str],
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.55, 0.55, 0.55))
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 10, C_FADED)
 
 func _draw_status(font: Font, vp: Vector2) -> void:
-	draw_rect(Rect2(0, vp.y - BOT_H, vp.x, BOT_H), Color(0, 0, 0, 0.72))
+	draw_rect(Rect2(0, vp.y - BOT_H, vp.x, BOT_H), Color(0.02, 0.016, 0.010, 0.88))
+	draw_line(Vector2(0, vp.y - BOT_H), Vector2(vp.x - RIGHT_W, vp.y - BOT_H),
+			Color(C_BR_SHADOW, 0.7), 1.0)
 	if _status != "":
 		draw_string(font, Vector2(12, vp.y - 13), _status,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1.0, 0.9, 0.5))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, C_BR_FLARE)
+	# Усі кнопки — єдиний темно-коричневий стиль, різняться іконкою/кольором тексту
 	var mbtn := _map_btn_rect()
-	draw_rect(mbtn, Color(0.08, 0.16, 0.24, 0.9))
-	draw_rect(mbtn, C_BORDER, false, 1.0)
+	draw_rect(mbtn, Color(0.07, 0.06, 0.03, 0.92))
+	draw_rect(mbtn, Color(C_BORDER, 0.75), false, 1.0)
 	draw_string(font, mbtn.position + Vector2(10, 19), "> Карта світу",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_PARCH)
 	var wb := _workers_btn_rect()
-	draw_rect(wb, Color(0.10, 0.22, 0.12, 0.9))
-	draw_rect(wb, C_BORDER, false, 1.0)
-	var pop_str := "Люди: %d" % GameState.population
+	draw_rect(wb, Color(0.07, 0.06, 0.03, 0.92))
+	draw_rect(wb, Color(C_BORDER, 0.75), false, 1.0)
+	var pop_str := "⚑ Люди: %d" % GameState.population
 	if GameState.pending_population > 0:
 		pop_str += "  (+%d)" % GameState.pending_population
 	draw_string(font, wb.position + Vector2(10, 19), pop_str,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.6, 0.9, 0.6))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.55, 0.85, 0.55))
 	var eb := _equip_btn_rect()
-	draw_rect(eb, Color(0.18, 0.14, 0.22, 0.9))
-	draw_rect(eb, C_BORDER, false, 1.0)
+	draw_rect(eb, Color(0.07, 0.06, 0.03, 0.92))
+	draw_rect(eb, Color(C_BORDER, 0.75), false, 1.0)
 	draw_string(font, eb.position + Vector2(10, 19), "⚔ Спорядження",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.85, 0.75, 1.0))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_PARCH)
 	var ib := _inv_btn_rect()
-	draw_rect(ib, Color(0.10, 0.18, 0.22, 0.9))
-	draw_rect(ib, C_BORDER, false, 1.0)
+	draw_rect(ib, Color(0.07, 0.06, 0.03, 0.92))
+	draw_rect(ib, Color(C_BORDER, 0.75), false, 1.0)
 	draw_string(font, ib.position + Vector2(10, 19), "◆ Інвентар",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.65, 0.90, 1.0))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_PARCH)
 	var rb := _rest_btn_rect()
-	draw_rect(rb, Color(0.10, 0.14, 0.10, 0.9))
-	draw_rect(rb, C_BORDER, false, 1.0)
+	draw_rect(rb, Color(0.07, 0.06, 0.03, 0.92))
+	draw_rect(rb, Color(C_BORDER, 0.75), false, 1.0)
 	draw_string(font, rb.position + Vector2(10, 19), "⏭ Відпочити",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.55, 0.80, 0.55))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.50, 0.80, 0.50))
 
 func _draw_worker_popup(font: Font) -> void:
 	var pr     := _popup_rect()
@@ -1370,20 +1409,24 @@ func _draw_worker_popup(font: Font) -> void:
 
 	# Тінь + фон
 	draw_rect(Rect2(0, 0, get_viewport_rect().size.x, get_viewport_rect().size.y),
-			Color(0, 0, 0, 0.55))
-	draw_rect(pr, Color(0.10, 0.08, 0.06, 0.97))
-	draw_rect(pr, C_BORDER_S, false, 1.5)
-
-	# Заголовок
-	draw_string(font, pr.position + Vector2(12, 24), "Розподіл робітників",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.95, 0.80, 0.20))
+			Color(0, 0, 0, 0.72))
+	draw_rect(pr.grow(4.0), Color(0, 0, 0, 0.40))
+	draw_rect(pr, Color(0.12, 0.095, 0.065, 0.98))
+	draw_rect(pr, Color(C_BORDER_S, 0.85), false, 1.5)
+	# Заголовок — власна смуга
+	var hdr_r_w := Rect2(pr.position.x, pr.position.y, pr.size.x, 38)
+	draw_rect(hdr_r_w, Color(0.08, 0.062, 0.040, 0.95))
+	draw_string(font, pr.position + Vector2(12, 25), "Розподіл робітників",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 16, C_BR_FLARE)
+	_draw_ornament_divider(pr.position.x + 8, pr.position.x + pr.size.x - 8,
+			pr.position.y + 38.0, Color(C_BORDER_S, 0.45))
 
 	# Кнопка закрити
 	var cr := _popup_close_rect()
-	draw_rect(cr, Color(0.25, 0.10, 0.10, 0.9))
-	draw_rect(cr, C_BORDER, false, 1.0)
+	draw_rect(cr, Color(0.18, 0.06, 0.06, 0.95))
+	draw_rect(cr, Color(C_BORDER, 0.8), false, 1.0)
 	draw_string(font, cr.position + Vector2(7, 18), "✕",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(C_BONE, 0.9))
 
 	# Населення
 	var used: int = 0
@@ -1392,11 +1435,11 @@ func _draw_worker_popup(font: Font) -> void:
 	draw_string(font, pr.position + Vector2(12, 48),
 			"Населення: %d   |   Призначено: %d   |   Вільні: %d" % [
 				GameState.population, used, free_pop],
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.70, 0.70, 0.60))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_PARCH)
 	draw_string(font, pr.position + Vector2(12, 64),
 			"Їжа: %d  (споживання: %d/цикл)" % [
 				GameState.resources.get("food", 0), ceili(GameState.population / 2.0)],
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.5, 0.5, 0.5))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, C_DIM)
 
 	# Рядки ресурсів
 	for ri in rkeys.size():
@@ -1407,30 +1450,30 @@ func _draw_worker_popup(font: Font) -> void:
 		var prod:  int    = w * int(GameState.WORKER_PRODUCTIVITY[key])
 		var ry    := pr.position.y + 80 + ri * 54.0
 
-		draw_rect(Rect2(pr.position.x + 8, ry + 4, pr.size.x - 16, 46), Color(0.08, 0.07, 0.05))
-		draw_rect(Rect2(pr.position.x + 8, ry + 4, pr.size.x - 16, 46), Color(col, 0.2), false, 1.0)
+		draw_rect(Rect2(pr.position.x + 8, ry + 4, pr.size.x - 16, 46), Color(0.06, 0.05, 0.03))
+		draw_rect(Rect2(pr.position.x + 8, ry + 4, pr.size.x - 16, 46), Color(col, 0.22), false, 1.0)
 		draw_rect(Rect2(pr.position.x + 14, ry + 16, 12, 12), col)
 		draw_string(font, Vector2(pr.position.x + 32, ry + 26), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_BONE)
 		draw_string(font, Vector2(pr.position.x + 32, ry + 42),
 				"+%d/цикл" % prod,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col if prod > 0 else Color(0.4, 0.4, 0.4))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col if prod > 0 else C_FADED)
 
 		# Кнопки [-] [N] [+]
 		var mr := _popup_minus_rect(ri)
 		var pr2 := _popup_plus_rect(ri)
 		var hov_m := _hov_wbtn == ri * 2
 		var hov_p := _hov_wbtn == ri * 2 + 1
-		draw_rect(mr, Color(0.30, 0.10, 0.10, 0.9) if hov_m else Color(0.18, 0.08, 0.08, 0.9))
-		draw_rect(mr, C_BORDER, false, 1.0)
+		draw_rect(mr, Color(0.28, 0.08, 0.08, 0.95) if hov_m else Color(0.14, 0.06, 0.06, 0.9))
+		draw_rect(mr, Color(C_BORDER, 0.8), false, 1.0)
 		draw_string(font, mr.position + Vector2(8, 18), "−",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_BONE)
 		draw_string(font, Vector2(mr.position.x + mr.size.x + 6, mr.position.y + 18),
-				"%d" % w, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
-		draw_rect(pr2, Color(0.10, 0.28, 0.10, 0.9) if hov_p else Color(0.08, 0.18, 0.08, 0.9))
-		draw_rect(pr2, C_BORDER, false, 1.0)
+				"%d" % w, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_BR_FLARE)
+		draw_rect(pr2, Color(0.08, 0.22, 0.08, 0.95) if hov_p else Color(0.06, 0.14, 0.06, 0.9))
+		draw_rect(pr2, Color(C_BORDER, 0.8), false, 1.0)
 		draw_string(font, pr2.position + Vector2(8, 18), "+",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_BONE)
 	_draw_popup_fade(_popup_rect())
 
 func _draw_equip_popup(font: Font) -> void:
@@ -1439,23 +1482,25 @@ func _draw_equip_popup(font: Font) -> void:
 
 	# Затемнення + фон
 	draw_rect(Rect2(0, 0, get_viewport_rect().size.x, get_viewport_rect().size.y),
-			Color(0, 0, 0, 0.55))
-	draw_rect(pr, Color(0.10, 0.08, 0.12, 0.97))
-	draw_rect(pr, C_BORDER_S, false, 1.5)
-
-	# Заголовок + закрити
-	draw_string(font, pr.position + Vector2(12, 24), "Спорядження",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 0.75, 1.0))
+			Color(0, 0, 0, 0.72))
+	draw_rect(pr.grow(4.0), Color(0, 0, 0, 0.40))
+	draw_rect(pr, Color(0.12, 0.095, 0.065, 0.98))
+	draw_rect(pr, Color(C_BORDER_S, 0.85), false, 1.5)
+	# Заголовок — власна смуга
+	var hdr_r_eq := Rect2(pr.position.x, pr.position.y, pr.size.x, 38)
+	draw_rect(hdr_r_eq, Color(0.08, 0.062, 0.040, 0.95))
+	draw_string(font, pr.position + Vector2(12, 25), "Спорядження",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 16, C_BR_FLARE)
 	var cr := _equip_close_rect()
-	draw_rect(cr, Color(0.25, 0.10, 0.10, 0.9))
-	draw_rect(cr, C_BORDER, false, 1.0)
+	draw_rect(cr, Color(0.18, 0.06, 0.06, 0.95))
+	draw_rect(cr, Color(C_BORDER, 0.8), false, 1.0)
 	draw_string(font, cr.position + Vector2(7, 18), "✕",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(C_BONE, 0.9))
 
 	if chars.is_empty():
 		draw_string(font, pr.position + Vector2(12, 100),
 				"Немає персонажів у загоні. Додай компаньйона і відкрий знову.",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.55, 0.55, 0.55))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_DIM)
 		return
 
 	# ── Вкладки персонажів ────────────────────────────────────────────────
@@ -1464,12 +1509,12 @@ func _draw_equip_popup(font: Font) -> void:
 		var tab_r := _equip_tab_rect(i)
 		var is_a  := i == _equip_char_idx
 		var is_h  := i == _equip_hov_tab and not is_a
-		draw_rect(tab_r, Color(0.32,0.22,0.40,0.95) if is_a else
-				(Color(0.22,0.17,0.28,0.9) if is_h else Color(0.15,0.12,0.18,0.85)))
-		draw_rect(tab_r, C_BORDER_S if is_a else C_BORDER, false, 1.0)
+		draw_rect(tab_r, Color(0.22, 0.16, 0.04, 0.95) if is_a else
+				(Color(0.15, 0.11, 0.04, 0.92) if is_h else Color(0.08, 0.065, 0.042, 0.88)))
+		draw_rect(tab_r, C_BORDER_S if is_a else Color(C_BORDER, 0.65), false, 1.0)
 		draw_string(font, tab_r.position + Vector2(6, 18), chars[i]["name"] as String,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
-				Color.WHITE if is_a else Color(0.75, 0.75, 0.75))
+				C_BR_FLARE if is_a else C_DIM)
 
 	# ── 11 слотів спорядження ────────────────────────────────────────────
 	var char_key: String = chars[_equip_char_idx]["key"] as String
@@ -1482,51 +1527,51 @@ func _draw_equip_popup(font: Font) -> void:
 		var is_h   := si == _equip_hov_slot and not is_sel
 
 		var bg: Color
-		if is_sel:           bg = Color(0.28, 0.20, 0.40, 0.95)
-		elif is_h:           bg = Color(0.20, 0.16, 0.26, 0.9)
-		elif not item.is_empty(): bg = Color(0.15, 0.12, 0.20, 0.9)
-		else:                bg = Color(0.10, 0.08, 0.14, 0.9)
+		if is_sel:                bg = Color(0.22, 0.16, 0.04, 0.95)
+		elif is_h:                bg = Color(0.16, 0.12, 0.04, 0.92)
+		elif not item.is_empty(): bg = Color(0.11, 0.09, 0.03, 0.9)
+		else:                     bg = Color(0.075, 0.060, 0.038, 0.90)
 		draw_rect(sr, bg)
-		draw_rect(sr, C_BORDER_S if is_sel else (C_BORDER_S if not item.is_empty() else C_BORDER),
-				false, 1.0 if not is_sel else 2.0)
+		draw_rect(sr, C_BORDER_S if is_sel else (Color(C_BORDER_S, 0.65) if not item.is_empty() else Color(C_BORDER, 0.5)),
+				false, 1.5 if is_sel else 1.0)
 
 		# Назва слоту (дрібно зверху)
 		draw_string(font, sr.position + Vector2(5, 13), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.55, 0.50, 0.70))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 10, C_DIM)
 
 		if item.is_empty():
 			var hint := "[ клік → вибрати ]" if is_sel else "[ порожньо ]"
-			var hcol := Color(0.55, 0.50, 0.75) if is_sel else Color(0.35, 0.32, 0.38)
+			var hcol := Color(C_BORDER_S, 0.75) if is_sel else C_FADED
 			draw_string(font, sr.position + Vector2(5, 36), hint,
 					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, hcol)
 		else:
 			var iname: String = item.get("name", "???") as String
 			draw_string(font, sr.position + Vector2(5, 34), iname,
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.92, 0.88, 1.0))
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_BONE)
 			var stats := _item_stat_str(item)
 			if stats != "":
 				draw_string(font, sr.position + Vector2(5, 47), stats,
-						HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0.60, 0.85, 0.60))
+						HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0.55, 0.85, 0.55))
 			if is_sel:
 				draw_string(font, sr.position + Vector2(sr.size.x - 64, 47), "кліщ:зняти",
-						HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0.90, 0.40, 0.40))
+						HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0.90, 0.40, 0.35))
 
 	# ── Секція інвентаря (показується коли обраний слот) ──────────────────
 	var iy0 := _inv_header_y()
-	draw_line(Vector2(pr.position.x + 8, iy0), Vector2(pr.position.x + pr.size.x - 8, iy0),
-			Color(C_BORDER, 0.5), 1.0)
+	_draw_ornament_divider(pr.position.x + 8, pr.position.x + pr.size.x - 8,
+			iy0, Color(C_BORDER_S, 0.40))
 
 	if _equip_sel_slot != -1:
 		var sel_slot: String = GameState.EQUIP_SLOTS[_equip_sel_slot]
 		draw_string(font, Vector2(pr.position.x + 8, iy0 + 14),
 				"Інвентар  [%s]:" % (GameState.SLOT_LABELS[sel_slot] as String),
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.75, 1.0))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_BR_FLARE)
 
 		var matching := _matching_items(char_key, sel_slot)
 		if matching.is_empty():
 			draw_string(font, Vector2(pr.position.x + 8, iy0 + 42),
 					"Немає підходящих предметів (Кузня → будуй для отримання)",
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.45, 0.42, 0.48))
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, C_DIM)
 		else:
 			_equip_inv_off = mini(_equip_inv_off, maxi(0, matching.size() - 4))
 			for ri in mini(4, matching.size() - _equip_inv_off):
@@ -1534,28 +1579,28 @@ func _draw_equip_popup(font: Font) -> void:
 				var it: Dictionary = GameState.inventory[idx] as Dictionary
 				var ir    := _inv_item_rect(ri)
 				var is_ih := ri == _equip_inv_hov
-				draw_rect(ir, Color(0.26, 0.19, 0.36, 0.95) if is_ih else Color(0.18, 0.14, 0.24, 0.9))
-				draw_rect(ir, C_BORDER_S if is_ih else C_BORDER, false, 1.0 if is_ih else 0.8)
+				draw_rect(ir, Color(0.22, 0.16, 0.04, 0.95) if is_ih else Color(0.08, 0.07, 0.04, 0.9))
+				draw_rect(ir, C_BORDER_S if is_ih else Color(C_BORDER, 0.55), false, 1.0 if is_ih else 0.8)
 				draw_string(font, ir.position + Vector2(6, 20),
 						(it.get("name", "?") as String) + "  " + _item_stat_str(it),
 						HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
-						Color(1.0, 0.97, 1.0) if is_ih else Color(0.88, 0.85, 0.95))
+						C_BR_FLARE if is_ih else C_BONE)
 			# Кнопки прокрутки
 			if matching.size() > 4:
 				var su := _inv_scroll_up_rect()
 				var sd := _inv_scroll_dn_rect()
-				draw_rect(su, Color(0.20,0.15,0.28,0.9)); draw_rect(su, C_BORDER, false, 1.0)
-				draw_rect(sd, Color(0.20,0.15,0.28,0.9)); draw_rect(sd, C_BORDER, false, 1.0)
-				draw_string(font, su.position + Vector2(10,20), "↑", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
-				draw_string(font, sd.position + Vector2(10,20), "↓", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+				draw_rect(su, Color(0.12, 0.09, 0.04, 0.92)); draw_rect(su, Color(C_BORDER, 0.7), false, 1.0)
+				draw_rect(sd, Color(0.12, 0.09, 0.04, 0.92)); draw_rect(sd, Color(C_BORDER, 0.7), false, 1.0)
+				draw_string(font, su.position + Vector2(10,20), "↑", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_BONE)
+				draw_string(font, sd.position + Vector2(10,20), "↓", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, C_BONE)
 	else:
 		draw_string(font, Vector2(pr.position.x + 8, iy0 + 14),
 				"Клікни на слот щоб побачити доступні предмети",
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.50, 0.48, 0.55))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, C_DIM)
 
 	# ── Підсумок броні ────────────────────────────────────────────────────
 	var by  := pr.position.y + pr.size.y - 26
-	draw_rect(Rect2(pr.position.x + 8, by - 6, pr.size.x - 16, 24), Color(0.09, 0.07, 0.12))
+	draw_rect(Rect2(pr.position.x + 8, by - 6, pr.size.x - 16, 24), Color(0.05, 0.04, 0.02))
 	var total_armor := GameState.get_char_armor(char_key)
 	var total_dmg   := GameState.get_char_dmg_bonus(char_key)
 	var summary     := "Броня: %d" % total_armor
@@ -1564,7 +1609,7 @@ func _draw_equip_popup(font: Font) -> void:
 		summary += "  (-%d%% урону)" % reduc
 	if total_dmg > 0: summary += "   АТК: +%d" % total_dmg
 	draw_string(font, Vector2(pr.position.x + 12, by + 10), summary,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.70, 0.90, 0.70))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.55, 0.88, 0.55))
 	_draw_popup_fade(pr)
 
 func _item_stat_str(item: Dictionary) -> String:

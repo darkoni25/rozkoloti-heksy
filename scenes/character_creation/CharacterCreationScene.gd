@@ -54,15 +54,20 @@ const CLASSES: Array = [
 ]
 
 # ── Кольори інтерфейсу ────────────────────────────────────────────────────
-const C_BG       := Color(0.07, 0.06, 0.05)
-const C_PANEL    := Color(0.11, 0.09, 0.07, 0.92)
+const C_BG       := Color(0.039, 0.031, 0.020)       # темне чорнило
+const C_PANEL    := Color(0.09, 0.07, 0.05, 0.92)
 const C_BORDER   := Color(0.45, 0.38, 0.28, 1.0)
 const C_BORDER_S := Color(0.85, 0.65, 0.15, 1.0)
-const C_TITLE    := Color(0.95, 0.80, 0.20)
-const C_SEL      := Color(0.28, 0.20, 0.05, 0.95)
-const C_HOV      := Color(0.18, 0.15, 0.09, 0.88)
-const C_BTN_OK   := Color(0.18, 0.36, 0.12, 0.95)
-const C_BTN_DIS  := Color(0.14, 0.14, 0.14, 0.70)
+const C_TITLE    := Color(0.941, 0.812, 0.471)        # яскраве золото
+const C_SEL      := Color(0.26, 0.19, 0.04, 0.95)
+const C_HOV      := Color(0.16, 0.13, 0.04, 0.88)
+const C_BTN_OK   := Color(0.14, 0.32, 0.10, 0.95)
+const C_BTN_DIS  := Color(0.10, 0.08, 0.06, 0.70)
+const C_BR_FLARE := Color(0.941, 0.812, 0.471, 1.0)  # яскраве золото
+const C_BONE     := Color(0.910, 0.851, 0.702, 1.0)  # теплий білий
+const C_PARCH    := Color(0.784, 0.706, 0.529, 1.0)  # пергамент
+const C_DIM      := Color(0.541, 0.471, 0.345, 1.0)  # приглушений
+const C_FADED    := Color(0.353, 0.302, 0.212, 1.0)  # дуже тьмяний
 
 # ── Стан ─────────────────────────────────────────────────────────────────
 var _name_buf:   String = ""
@@ -177,7 +182,7 @@ func _draw() -> void:
 	draw_string(font, Vector2(24, 44), "ГЕРОЙ",
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 22, C_TITLE)
 	draw_string(font, Vector2(24, 68), "Людина",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.55, 0.55, 0.55))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_DIM)
 
 	# Іконка класу (великий кружок)
 	var cls: Dictionary = CLASSES[_sel_class]
@@ -218,30 +223,30 @@ func _draw() -> void:
 		var test := (line_buf + " " + word).strip_edges()
 		if test.length() > 28 and line_buf != "":
 			draw_string(font, Vector2(16, dy), line_buf,
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.55, 0.55, 0.55))
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, C_DIM)
 			dy += 15.0; line_buf = word
 		else:
 			line_buf = test
 	if line_buf != "":
 		draw_string(font, Vector2(16, dy), line_buf,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.55, 0.55, 0.55))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, C_DIM)
 
 	# Роздільник лівої/правої панелей
 	draw_line(Vector2(lw, 0), Vector2(lw, vp.y - 64), C_BORDER, 1.0)
 
 	# ── Ім'я ──────────────────────────────────────────────────────────────
 	draw_string(font, Vector2(24, 140), "Ім'я:",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.65, 0.65, 0.65))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, C_PARCH)
 	var nr := _name_rect()
-	draw_rect(nr, Color(0.09, 0.08, 0.06))
+	draw_rect(nr, Color(0.07, 0.06, 0.04))
 	draw_rect(nr, C_BORDER_S, false, 1.5)
 	draw_string(font, nr.position + Vector2(10, 25),
 			_name_buf + ("|" if _cursor_vis else " "),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 16, C_BONE)
 
 	# ── Стать ─────────────────────────────────────────────────────────────
 	draw_string(font, Vector2(24, 204), "Стать:",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.65, 0.65, 0.65))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 11, C_PARCH)
 	for i in 2:
 		var gr   := _gender_rect(i)
 		var is_s := i == _gender
@@ -251,11 +256,12 @@ func _draw() -> void:
 		draw_string(font, gr.position + Vector2(10, 22),
 				("♂ Чоловік" if i == 0 else "♀ Жінка"),
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
-				Color.WHITE if is_s else Color(0.70, 0.70, 0.70))
+				C_BR_FLARE if is_s else C_PARCH)
+
 
 	# ── Права панель — список класів ─────────────────────────────────────
 	draw_string(font, Vector2(lw + 14, 44), "Оберіть клас:",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.65, 0.65, 0.65))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_PARCH)
 
 	for i in CLASSES.size():
 		var c: Dictionary = CLASSES[i]
@@ -265,7 +271,7 @@ func _draw() -> void:
 		var col: Color = c["color"]
 
 		draw_rect(rr, C_SEL if is_s else (C_HOV if is_h else C_PANEL))
-		draw_rect(rr, col if is_s else (C_BORDER if is_h else Color(C_BORDER, 0.4)),
+		draw_rect(rr, col if is_s else (C_BORDER_S if is_h else Color(C_BORDER, 0.5)),
 				false, 1.5 if is_s else 1.0)
 
 		# Маленький кружок класу
@@ -277,7 +283,7 @@ func _draw() -> void:
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
 
 		# Назва класу
-		var name_col := C_TITLE if is_s else Color(0.80, 0.75, 0.65)
+		var name_col := C_TITLE if is_s else C_BONE
 		draw_string(font, rr.position + Vector2(44, 24),
 				c["name"] as String,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, name_col)
@@ -290,20 +296,22 @@ func _draw() -> void:
 		]
 		draw_string(font, rr.position + Vector2(44, 44), stats,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 10,
-				Color(0.68, 0.88, 0.55) if is_s else Color(0.48, 0.48, 0.48))
+				Color(0.68, 0.88, 0.55) if is_s else C_FADED)
 
 	# ── Нижня панель ─────────────────────────────────────────────────────
-	draw_rect(Rect2(0, vp.y - 64, vp.x, 64), Color(0, 0, 0, 0.55))
+	draw_rect(Rect2(0, vp.y - 64, vp.x, 64), Color(0.02, 0.016, 0.010, 0.92))
+	draw_line(Vector2(0, vp.y - 64), Vector2(vp.x, vp.y - 64),
+			Color(0.290, 0.220, 0.094, 0.65), 1.0)
 
 	var br    := _start_btn_rect()
 	var can_start := _name_buf.strip_edges() != ""
 	draw_rect(br, C_BTN_OK if can_start else C_BTN_DIS)
-	draw_rect(br, C_BORDER_S if can_start else C_BORDER, false, 1.5)
+	draw_rect(br, C_BORDER_S if can_start else Color(C_BORDER, 0.5), false, 1.5)
 	draw_string(font, br.position + Vector2(32, 27),
 			"Почати пригоду!" if can_start else "Введіть ім'я...",
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
-			Color.WHITE if can_start else Color(0.38, 0.38, 0.38))
+			C_BONE if can_start else C_FADED)
 
 	draw_string(font, Vector2(vp.x * 0.5 - 140, vp.y - 12),
 			"Enter — підтвердити  ·  Backspace — стерти",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.35, 0.35, 0.35))
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, C_FADED)
